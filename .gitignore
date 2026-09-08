@@ -1,0 +1,22 @@
+**/bin/
+**/obj/
+proto/artifacts/
+*.log
+
+# Local IDE state and diagnostics
+.vs/
+.idea/
+*.user
+*.suo
+*.binlog
+TestResults/
+
+# Local configuration, signing keys, and saved notes
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+notes.json
+notes.json.bak
+product-check-*/

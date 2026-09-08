@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Noot.Proto (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Noot.Proto (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
