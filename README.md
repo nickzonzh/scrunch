@@ -31,10 +31,13 @@ build tools. Executable: `proto/artifacts/scrunch-compact/Scrunch.exe`.
   and reduced-motion defaults. Existing notes retain their individual settings.
   Windows' animation preference is still respected. Settings also shows shortcut
   availability, version, and **Open data folder**.
-- Minimise the Scrunch home window while working. **Open Scrunch** in any note's
-  top-edge menu restores it. **Quit**, or closing the home window, saves and exits;
-  active notes return on next launch. Closing an individual note discards it
-  recoverably. There is no tray icon or hidden background mode in this milestone.
+- Scrunch lives in the notification area. Left-click its paper icon to open the
+  existing shell near the tray; click away to dismiss it. Right-click for **New
+  note**, **Show notes**, **Undo last discard**, **Settings**, or **Quit**.
+- Closing the shell hides it and leaves notes and Ctrl+Alt+N working. **Quit**
+  saves and exits; active notes return on next launch. Closing an individual
+  note still discards it recoverably. Launching Scrunch again reveals the running
+  shell. **Open Scrunch** in a note's top-edge menu also restores it.
 
 The home panel is a 400-DIP-wide native utility that fits its content (329 DIP
 high for three notes, plus a 32-DIP integrated caption), with a bounded scrolling
@@ -55,7 +58,14 @@ manifest display names now use **Scrunch**. The checkout folder, source project
 `proto/Noot.Proto/Noot.Proto.csproj`, `Noot_Proto` namespace, check-project names
 and internal **NootFX** subsystem/assets deliberately retain their technical
 names. This avoids churn in compiled XAML, graphics assets and existing tools.
-Package identity and icons are unchanged; a branded icon is a later task.
+Package identity is unchanged. The executable, shell and notification icon now use
+the editable [Scrunch paper mark](tools/scrunch-icon/scrunch.svg).
+
+See [tray implementation and verification](proto/TRAY.md) for native lifecycle,
+positioning, single-instance routing, desktop evidence and hardware limitations.
+Launch-at-sign-in is deferred while the executable lives in a movable build folder;
+no startup entry is installed. The `--startup` launch argument already supports a
+quiet shell with restored notes for a future explicit opt-in.
 
 Saved notes deliberately remain in `%LOCALAPPDATA%\Noot`. No files are moved,
 so existing notes, recovery backups and the exclusive writer lock still work.

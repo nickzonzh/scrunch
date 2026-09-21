@@ -127,6 +127,9 @@
                         <FontIcon Glyph="&#xE711;" FontSize="10"/>
                     </Button>
                 </Grid>
+                <TextBlock x:Name="TrayNotice" Visibility="Collapsed" Margin="8,4,8,0" FontSize="12" TextWrapping="Wrap"
+                           Text="The tray icon is unavailable. Keep this window open; use Quit to exit."
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" AutomationProperties.LiveSetting="Polite"/>
             </StackPanel>
         </Grid>
         <Grid x:Name="SettingsPanel" Visibility="Collapsed" RowSpacing="12" MaxHeight="460">

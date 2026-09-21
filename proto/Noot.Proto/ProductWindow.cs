@@ -16,6 +16,11 @@ public sealed partial class ProductWindow : Window
     private readonly InfoBar _notice = new() { IsClosable = true };
     private readonly Button _undo = new() { Content = "Undo last discard" };
     private readonly NewNoteHotkey _hotkey;
+    private readonly TrayIcon _tray;
+    private bool _trayOpened;
+    private bool _shellActive;
+    private long _trayDismissedAt = long.MinValue;
+    private bool _started;
     private bool _quitting;
     private bool _dirty;
     private bool _fitQueued;
@@ -36,11 +41,13 @@ public sealed partial class ProductWindow : Window
         double scale = GetDpiForWindow(WindowNative.GetWindowHandle(this)) / 96.0;
         AppWindow.ResizeClient(new SizeInt32((int)(400 * scale), (int)(240 * scale)));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
-        { presenter.IsMaximizable = false; presenter.IsResizable = false; }
+        { presenter.IsMaximizable = false; presenter.IsMinimizable = false; presenter.IsResizable = false; }
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Scrunch.ico"));
         _shell.NewRequested += () => CreateNote();
         _shell.NoteRequested += ActivateNote;
         _shell.UndoRequested += UndoDiscard;
-        _shell.QuitRequested += () => { if (PrepareQuit()) Close(); };
+        _shell.QuitRequested += Quit;
+        _shell.DismissRequested += () => { if (_trayOpened) HideShell(); };
         _shell.DefaultsChanged += defaults => { _store.Document.Defaults = defaults; ScheduleSave(); };
         _shell.DataFolderRequested += OpenDataFolder;
         var root = new Grid();
@@ -141,6 +148,20 @@ public sealed partial class ProductWindow : Window
         }
 #endif
         _hotkey = new NewNoteHotkey(WindowNative.GetWindowHandle(this), () => CreateNote());
+        _tray = new TrayIcon(WindowNative.GetWindowHandle(this), ToggleTrayShell, RouteTrayCommand,
+            () => _store.Document.Notes.Any(n => n.DeletedAt != null));
+        _tray.RegistrationChanged += UpdateTrayAvailability;
+        _tray.MenuClosed += () => { if (_trayOpened && !_shellActive) HideShell(); };
+        UpdateTrayAvailability();
+        Activated += (_, e) =>
+        {
+            _shellActive = e.WindowActivationState != WindowActivationState.Deactivated;
+            if (e.WindowActivationState != WindowActivationState.Deactivated || !_trayOpened || _tray.MenuOpen || _quitting) return;
+            // Explorer takes foreground on mouse-down, before NIN_SELECT arrives on mouse-up.
+            // Remember this particular dismissal so the same click cannot reopen the shell.
+            if (_tray.IsLeftClickOnIcon()) _trayDismissedAt = Environment.TickCount64;
+            HideShell();
+        };
         _shell.Configure(_store.Document.Defaults, _hotkey.Registered);
         _save.Tick += (_, _) => { _save.Stop(); SaveNow(); RefreshCount(); };
         var retry = new Button { Content = "Try saving again" };
@@ -148,13 +169,14 @@ public sealed partial class ProductWindow : Window
         _notice.ActionButton = retry;
         AppWindow.Closing += (_, e) =>
         {
-            if (!PrepareQuit()) e.Cancel = true;
+            if (_quitting) return;
+            e.Cancel = true;
+            HideShell();
         };
         Closed += (_, _) =>
         {
-            NootFX.NootFxService.Shared.Dispose(); _hotkey.Dispose(); _store.Dispose(); Application.Current.Exit();
+            _tray.Dispose(); NootFX.NootFxService.Shared.Dispose(); _hotkey.Dispose(); _store.Dispose(); Application.Current.Exit();
         };
-        ((FrameworkElement)Content).Loaded += OnLoaded;
         RefreshCount();
     }
 
@@ -163,6 +185,7 @@ public sealed partial class ProductWindow : Window
 
     private void UpdateShellFrame(FrameworkElement root)
     {
+        if (_quitting) return;
         var handle = WindowNative.GetWindowHandle(this);
         // Keep native buttons, shadow and border; DWM owns window behaviour.
         int dark = root.ActualTheme == ElementTheme.Dark ? 1 : 0;
@@ -228,6 +251,15 @@ public sealed partial class ProductWindow : Window
                 if (AppWindow.Size != outer) AppWindow.Resize(outer);
             }
             else if (AppWindow.ClientSize != desired) AppWindow.ResizeClient(desired);
+            if (_trayOpened && AppWindow.IsVisible) PositionShell();
+            else if (AppWindow.IsVisible)
+            {
+                var current = new DesktopRect(AppWindow.Position.X, AppWindow.Position.Y,
+                    AppWindow.Position.X + AppWindow.Size.Width, AppWindow.Position.Y + AppWindow.Size.Height);
+                var clamped = TrayPlacement.Clamp(current, new(work.X, work.Y, work.X + work.Width, work.Y + work.Height));
+                if (current != clamped)
+                    AppWindow.MoveAndResize(new RectInt32(clamped.Left, clamped.Top, clamped.Width, clamped.Height));
+            }
         });
     }
 
@@ -246,9 +278,78 @@ public sealed partial class ProductWindow : Window
     private void ShowHome()
     {
         _shell.ShowHome();
-        if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter) presenter.Restore();
-        AppWindow.Show(); Activate();
+        ShowShell(fromTray: false);
     }
+
+    public void Start(bool quiet)
+    {
+        if (_started) return;
+        _started = true;
+        // Restore notes even when the shell has never loaded (quiet sign-in launch).
+        foreach (var record in _store.Document.Notes.Where(n => n.DeletedAt == null).ToArray()) Open(record, false);
+        if (!quiet || !_tray.Registered) ShowShell(fromTray: false);
+        OnLoaded(this, new RoutedEventArgs());
+    }
+
+    public void ShowShell(bool fromTray)
+    {
+        if (_quitting) return;
+        _trayOpened = fromTray && _tray.Registered;
+        _trayDismissedAt = long.MinValue;
+        PositionShell();
+        AppWindow.Show(); Activate();
+        TrayIcon.SetForegroundWindow(WindowNative.GetWindowHandle(this));
+        QueueFitShell();
+    }
+
+    private void PositionShell()
+    {
+        var rect = _tray.Position(AppWindow.Size.Width, AppWindow.Size.Height);
+        if (AppWindow.Position.X != rect.Left || AppWindow.Position.Y != rect.Top ||
+            AppWindow.Size.Width != rect.Width || AppWindow.Size.Height != rect.Height)
+            AppWindow.MoveAndResize(new RectInt32(rect.Left, rect.Top, rect.Width, rect.Height));
+    }
+
+    private void HideShell()
+    {
+        if (!_tray.Registered || _quitting) return;
+        _trayOpened = false;
+        AppWindow.Hide();
+    }
+
+    private void ToggleTrayShell()
+    {
+        if (_trayDismissedAt != long.MinValue && Environment.TickCount64 - _trayDismissedAt < 1000)
+        { _trayDismissedAt = long.MinValue; return; }
+        if (AppWindow.IsVisible && _trayOpened) HideShell();
+        else ShowShell(fromTray: true);
+    }
+
+    private void RouteTrayCommand(TrayCommand command)
+    {
+        if (_quitting) return;
+        switch (command)
+        {
+            case TrayCommand.NewNote: HideShell(); CreateNote(); break;
+            case TrayCommand.ShowNotes:
+                HideShell();
+                foreach (var record in _store.Document.Notes.Where(n => n.DeletedAt == null).ToArray()) ActivateNote(record.Id);
+                break;
+            case TrayCommand.Undo: HideShell(); UndoDiscard(); break;
+            case TrayCommand.Settings: _shell.ShowSettings(); ShowShell(fromTray: true); break;
+            case TrayCommand.Quit: Quit(); break;
+        }
+    }
+
+    private void UpdateTrayAvailability()
+    {
+        // A working tray replaces the shell's taskbar button. On failure keep it reachable.
+        AppWindow.IsShownInSwitchers = !_tray.Registered;
+        _shell.SetTrayStatus(_tray.Registered);
+        if (!_tray.Registered && _started) ShowShell(fromTray: false);
+    }
+
+    private void Quit() { if (!_quitting && !PrepareQuit()) return; _tray.Dispose(); Close(); }
 
     private void OpenDataFolder()
     {
@@ -259,9 +360,7 @@ public sealed partial class ProductWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ((FrameworkElement)Content).Loaded -= OnLoaded;
         await Task.Yield();
-        foreach (var record in _store.Document.Notes.Where(n => n.DeletedAt == null).ToArray()) Open(record, false);
         if (_store.RecoveryMessage != null) Notice(_store.RecoveryMessage, InfoBarSeverity.Warning);
         // The everyday shell reports shortcut conflicts in its compact inline
         // notice; preserve the lab's existing notice when the shell is absent.
@@ -269,6 +368,7 @@ public sealed partial class ProductWindow : Window
             Notice("Ctrl + Alt + N is in use. New note and Ctrl + N still work in Scrunch.", InfoBarSeverity.Warning);
         if (Environment.GetCommandLineArgs().Contains("--verify-product")) await VerifyAsync();
 #if DEBUG
+        if (Environment.GetCommandLineArgs().Contains("--verify-tray")) await VerifyTrayAsync();
         if (Environment.GetCommandLineArgs().Contains("--verify-fx")) await VerifyFxAsync();
         if (Environment.GetCommandLineArgs().Contains("--shell-preview"))
         {
@@ -352,8 +452,7 @@ public sealed partial class ProductWindow : Window
         Windows.Foundation.TypedEventHandler<object, WindowEventArgs>? closed = null;
         closed = (_, _) => { window.Closed -= closed; window.AppWindow.Closing -= closing; _windows.Remove(record.Id); RefreshCount(); };
         window.Closed += closed;
-        window.AppWindow.Show();
-        window.Activate();
+        window.AppWindow.Show(activateWindow: focus);
         if (focus) window.FocusEditor();
         RefreshCount();
         return window;
@@ -388,13 +487,15 @@ public sealed partial class ProductWindow : Window
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             Notice("Your latest changes could not be saved. Keep Scrunch open and check available disk space and access. " + error.Message, InfoBarSeverity.Error);
-            Activate();
+            ShowShell(fromTray: false);
             return false;
         }
     }
 
     private bool PrepareQuit()
     {
+        if (_quitting) return true;
+        foreach (var window in _windows.Values) window.CaptureRecord();
         if (!SaveNow()) return false;
         _quitting = true;
         _save.Stop();

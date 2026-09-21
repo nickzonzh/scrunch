@@ -1,5 +1,63 @@
 # Verification
 
+## Full shell brief revalidation, 21 September 2026, 23:16 local
+
+The checkout already contained the requested compact shell and bundled fonts
+(`115c710`, `98901f0`). Inspection found no need for another visual redesign.
+This pass refreshed the evidence for that implementation and corrected the sizing
+documentation: the **220–560 DIP root-height bound includes the integrated caption**.
+The everyday executable and the user's existing preview notes were left intact.
+
+- Fresh isolated Debug x64 build at `artifacts/shell-review/Scrunch.exe`:
+  **zero warnings/errors**. The first sandboxed restore failed because NuGet
+  network access was blocked; the authorized build outside the sandbox succeeded.
+- **45 product checks passed**, including New note, body-text search, native row
+  activation, Settings/Back and saved defaults, Undo, autosave, placement,
+  Unicode storage, menu discard (48 frames), and save-on-Quit. Three notes measured
+  **400 × 329 DIP** plus a **32-DIP caption**. Thirty rows scrolled within a
+  **560-DIP root** (528-DIP shell), then the shell shrank back to content.
+- **16 storage checks passed**, including restart round trips and recovery.
+  Evidence: `%TEMP%/noot-storage-check-58fedf0218e94c01a17f10cb1c284242`.
+- **62 NootFX lifecycle checks passed**, including repeated discard, Undo,
+  injected-failure recovery and reduced motion. Cold and 13-note 1.2-second idle
+  samples both recorded **0 ms process CPU**; ordinary notes added no FX frames
+  or devices, and final idle had no frame callbacks.
+- **25 native paper-renderer checks passed/reported**, covering all three
+  personalities, fresh text textures, peel interruption, crumple, Undo and
+  unsubscribe-on-settle. Its three-second Debug sample was 158.0 MB / 0.00% of
+  one CPU core. These short samples do not establish a sustained CPU/GPU budget.
+- Inspected all six fresh desktop captures in
+  `artifacts/shell-review/desktop-verification/`: `light-bright.png`,
+  `light-dark.png`, `dark-bright.png`, `dark-dark.png`,
+  `light-solid-fallback.png`, and `dark-solid-fallback.png`.
+  `desktop-matrix.json` contains matching runtime diagnostics and UIA trees are
+  saved alongside. All four Acrylic captures report **Active**, using light
+  **0.12 / 0.72** and dark **0.40 / 0.86** tint/luminosity. Both explicit solid
+  captures report **Forced solid fallback**. This supersedes the pending
+  active-state visual check in the dark-tint section below.
+- The bright/dark test surfaces are temporary native windows with a contrasting
+  stripe. The stripe is visibly blurred through Acrylic, while the solid cases
+  remain uniform. Text, search focus, dots and utility actions remain readable.
+  A real shortcut conflict remains visible and adds 38 DIP; it is dismissible.
+- Inspected the freshly rendered Drawably editor captures at 240 × 240,
+  300 × 320 and 440 × 420 DIP, plus the small scrolled sample. Latin punctuation,
+  digits, accented text, CJK, Greek, Cyrillic, Arabic and emoji render; native
+  text and JSON round trips preserve the Unicode content. These are real native
+  editor XAML captures, not desktop Acrylic evidence.
+- Font hashes match `Assets/Fonts/NOTICE.txt`; Inter Variable, Drawably Pen and
+  their OFL/MIT notices are present in the built output. The retained wordmark
+  is **18 DIP / 500**, deliberately quieter than the brief's approximate 600
+  target; body/secondary text is 400 and primary rows/actions use 500.
+
+The attachment supplied the text brief only. The earlier 420 × 540 client and
+24-DIP title were verified from commit `15b9ada`; no missing screenshot comparison
+is claimed. Windows 10 build 19045 was tested using per-window light/dark themes,
+without changing the user's OS theme or wallpaper. Windows 11, mixed DPI,
+physical mouse drag/resize/caption gestures, and real OS high-contrast,
+transparency and power-policy toggles remain unverified. Forced fallback does
+not substitute for those OS checks. The existing icon remains; a dedicated tiny
+Scrunch paper mark is still a separate branding task. No tray work was added.
+
 ## Dark Acrylic neutral-tint follow-up, 21 September 2026
 
 - Dark charcoal remains #202020; tint opacity increases from 0.18 to **0.40**

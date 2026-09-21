@@ -20,6 +20,7 @@ public sealed partial class ShellView : UserControl
     public event Action? DataFolderRequested;
     public event Action<NoteDefaults>? DefaultsChanged;
     public event Action? FitRequested;
+    public event Action? DismissRequested;
 
     public ShellView()
     {
@@ -37,7 +38,8 @@ public sealed partial class ShellView : UserControl
         AddShortcut(VirtualKey.Escape, VirtualKeyModifiers.None, () =>
         {
             if (SettingsPanel.Visibility == Visibility.Visible) ShowHome();
-            else SearchBox.Text = "";
+            else if (SearchBox.Text.Length != 0) SearchBox.Text = "";
+            else DismissRequested?.Invoke();
         });
     }
 
@@ -59,6 +61,12 @@ public sealed partial class ShellView : UserControl
         _notes = notes.ToArray();
         UndoButton.IsEnabled = _notes.Any(n => n.DeletedAt != null);
         FilterNotes();
+    }
+
+    public void SetTrayStatus(bool available)
+    {
+        TrayNotice.Visibility = available ? Visibility.Collapsed : Visibility.Visible;
+        FitRequested?.Invoke();
     }
 
     private void FilterNotes()
@@ -103,6 +111,9 @@ public sealed partial class ShellView : UserControl
     }
     private void Back_Click(object sender, RoutedEventArgs e) => ShowHome();
     private void Settings_Click(object sender, RoutedEventArgs e)
+        => ShowSettings();
+
+    public void ShowSettings()
     {
         HomePanel.Visibility = Visibility.Collapsed; SettingsPanel.Visibility = Visibility.Visible;
         BackButton.Focus(FocusState.Programmatic);

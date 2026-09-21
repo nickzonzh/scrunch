@@ -6,9 +6,10 @@ The information architecture and native controls are unchanged: Scrunch / New
 note, search, note list, Undo, Settings / Quit. The paper renderer, NootFX code,
 prepared bakes, note colours and storage schema are unchanged.
 
-The content width is **400 DIP**. Content is measured at that width with unbounded
-height, then constrained to **220–560 DIP**, also bounded by the current display
-work area minus 64 DIP. The three-note body is **329 DIP high** (previously 335),
+The XAML root width is **400 DIP**. The root is measured at that width with unbounded
+height, then constrained to **220–560 DIP including the integrated caption**, also
+bounded by the current display work area minus 64 DIP. The three-note body is
+**329 DIP high** (previously 335),
 plus a **32-DIP integrated caption**. A recovery/shortcut notice adds its measured
 height within the same cap. Native frame thickness is measured from the XAML
 host viewport. This avoids counting the old caption twice on Windows 10, and
@@ -110,6 +111,18 @@ API references: [title-bar customization](https://learn.microsoft.com/windows/ap
 and [native system backdrop configuration](https://learn.microsoft.com/windows/apps/develop/ui/system-backdrops).
 
 ## Verification boundary
+
+The current implementation was rebuilt and rechecked against the full shell brief
+at 23:16 local time on 21 September 2026. No further UI or renderer changes were
+needed. Fresh evidence is in `artifacts/shell-review/`: 45 product checks, 62
+NootFX checks, 25 paper-renderer checks, and six inspected native desktop captures
+under `desktop-verification/`. All four translucent cases reported Acrylic
+`Active`, including the latest dark **0.40 / 0.86** palette; the two explicit
+solid cases reported `Forced solid fallback`. The controlled bright/dark
+backgrounds visibly show through Acrylic but not through the solid fallbacks.
+This closes the active-Acrylic capture gap recorded for the dark-tint follow-up.
+The user's OS theme and wallpaper were not changed; light/dark were per-window
+WinUI themes. The earlier Windows 11 and OS-policy verification limits below remain.
 
 The final tidy-up is visually verified on Windows 10 19045: light and dark app
 themes over bright beach and dark floral Windows wallpaper images, displayed in
