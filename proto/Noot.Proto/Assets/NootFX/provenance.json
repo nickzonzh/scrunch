@@ -1,0 +1,30 @@
+{
+  "vertices": 3500,
+  "triangles": 6762,
+  "frames": 38,
+  "firstSourceFrame": 12,
+  "lastSourceFrame": 49,
+  "bytes": 4365160,
+  "sha256": "82d94686f02b76329fb1d044b96368b536250b519164cee4e316e1329f3e3d89",
+  "bounds": [
+    [
+      -0.5,
+      0.5
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      -0.7070000171661377,
+      0.7070000171661377
+    ]
+  ],
+  "xSign": 1,
+  "ySign": -1,
+  "source": "https://github.com/item-develop/paper-crumple-demo",
+  "inputs": {
+    "paper.fbx": "1f8882cb799ec3c2788d4f65e99521ca3acd69d3a4cc1903b22bd19250e721a1",
+    "position.exr": "88ea8f26c5f6b261d0f21a8703243d4d0d6599091ecec35b7c4f417c965aaff8"
+  }
+}

@@ -50,7 +50,11 @@ public partial class App : Application
         {
             try
             {
-                var directory = arguments.Contains("--verify-product")
+                bool isolated = arguments.Contains("--verify-product");
+#if DEBUG
+                isolated |= arguments.Contains("--fx-lab") || arguments.Contains("--verify-fx");
+#endif
+                var directory = isolated
                     ? System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-" + Guid.NewGuid().ToString("N"))
                     : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Noot");
                 _window = new ProductWindow(new NoteStore(directory));

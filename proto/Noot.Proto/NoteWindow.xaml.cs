@@ -77,6 +77,9 @@ public sealed partial class NoteWindow : Window
     public event EventHandler? HomeRequested;
     public event EventHandler<bool>? DiscardRequested;
     private bool _closed;
+    private CancellationTokenSource? _fxCancellation;
+    private XamlRoot? _observedRoot;
+    private readonly List<Action> _detachNativeEvents = new();
     public bool IsDiscarding { get; private set; }
     public int DiscardVersion { get; private set; }
     public int LastDiscardFrames { get; private set; }
@@ -128,7 +131,22 @@ public sealed partial class NoteWindow : Window
         SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
         _transparency = new NativeTransparency(_hwnd);
-        Closed += (_, _) => { _closed = true; Note.CancelDiscard(); _transparency.Dispose(); };
+        // WinUI Window.Close does not reliably raise UserControl.Unloaded.
+        // Explicitly release subscriptions/composition resources on window close.
+        Windows.Foundation.TypedEventHandler<object, WindowEventArgs>? closed = null;
+        closed = (_, _) =>
+        {
+            Closed -= closed;
+            _closed = true; _fxCancellation?.Cancel();
+            foreach (var detach in _detachNativeEvents) detach();
+            _detachNativeEvents.Clear(); Note.KeyboardAccelerators.Clear();
+            if (_observedRoot != null) { _observedRoot.Changed -= RootChanged; _observedRoot = null; }
+            _appWin.Changed -= AppWindowChanged;
+            Note.CancelDiscard(); Note.ReleaseGraphics();
+            Note.ContextFlyout = null; _menu?.Items.Clear();
+            _transparency.Dispose(); Content = null;
+        };
+        Closed += closed;
 
         SetWindowPos(_hwnd, IntPtr.Zero, 640, 320, 430, 450, SWP_NOZORDER);
 
@@ -141,27 +159,30 @@ public sealed partial class NoteWindow : Window
             _dragWinPos.X + (int)d.X,
             _dragWinPos.Y + (int)d.Y));
         Note.ContentSizeChanged += (_, _) => FitWindowToContent();
-        Note.Loaded += (_, _) => { Note.XamlRoot.Changed += (_, _) => FitWindowToContent(); FitWindowToContent(); };
+        RoutedEventHandler loaded = (_, _) => { _observedRoot = Note.XamlRoot; _observedRoot.Changed += RootChanged; FitWindowToContent(); };
+        Note.Loaded += loaded; _detachNativeEvents.Add(() => Note.Loaded -= loaded);
         var menu = new MenuFlyout();
         _menu = menu;
-        menu.Opened += async (_, _) => await Note.WarmTextureAsync();
-        menu.Closed += (_, _) =>
+        EventHandler<object> opened = async (_, _) => await Note.WarmTextureAsync();
+        menu.Opened += opened; _detachNativeEvents.Add(() => menu.Opened -= opened);
+        EventHandler<object> menuClosed = (_, _) =>
         {
             if (!_discardAfterMenu) return;
             _discardAfterMenu = false;
             // Let the flyout finish restoring focus before hiding the editor.
             DispatcherQueue.TryEnqueue(() => Discard(animate: true));
         };
+        menu.Closed += menuClosed; _detachNativeEvents.Add(() => menu.Closed -= menuClosed);
         if (record != null)
         {
             var create = new MenuFlyoutItem { Text = "New note", KeyboardAcceleratorTextOverride = "Ctrl+N" };
-            create.Click += (_, _) => NewRequested?.Invoke(this, EventArgs.Empty);
+            OnClick(create, (_, _) => NewRequested?.Invoke(this, EventArgs.Empty));
             menu.Items.Add(create);
             var colours = new MenuFlyoutSubItem { Text = "Paper colour" };
             foreach (var key in PaperTokens.Colours.Keys)
             {
                 var swatch = new MenuFlyoutItem { Text = char.ToUpperInvariant(key[0]) + key.Substring(1) };
-                swatch.Click += (_, _) => Note.SetColour(key);
+                OnClick(swatch, (_, _) => Note.SetColour(key));
                 colours.Items.Add(swatch);
             }
             menu.Items.Add(colours);
@@ -170,32 +191,32 @@ public sealed partial class NoteWindow : Window
         {
             int index = i;
             var item = new MenuFlyoutItem { Text = PaperFeel.All[i].Name };
-            item.Click += (_, _) => Note.SetFeel(index);
+            OnClick(item, (_, _) => Note.SetFeel(index));
             menu.Items.Add(item);
         }
         menu.Items.Add(new MenuFlyoutSeparator());
         var peel = new MenuFlyoutItem { Text = "Peel again" };
-        peel.Click += async (_, _) => await Note.PeelAsync();
+        OnClick(peel, async (_, _) => await Note.PeelAsync());
         menu.Items.Add(peel);
         var pin = new ToggleMenuFlyoutItem { Text = "Keep above other windows", IsChecked = record?.Pinned ?? true };
-        pin.Click += (_, _) => { if (_appWin.Presenter is OverlappedPresenter p) p.IsAlwaysOnTop = pin.IsChecked; CaptureRecord(); };
+        OnClick(pin, (_, _) => { if (_appWin.Presenter is OverlappedPresenter p) p.IsAlwaysOnTop = pin.IsChecked; CaptureRecord(); });
         menu.Items.Add(pin);
         if (record != null)
         {
             var motion = new ToggleMenuFlyoutItem { Text = "Reduce motion", IsChecked = record.ReducedMotion };
-            motion.Click += (_, _) => Note.SetReducedMotion(motion.IsChecked);
+            OnClick(motion, (_, _) => Note.SetReducedMotion(motion.IsChecked));
             menu.Items.Add(motion);
             var undo = new MenuFlyoutItem { Text = "Undo last discard", KeyboardAcceleratorTextOverride = "Ctrl+Shift+Z" };
-            undo.Click += (_, _) => UndoRequested?.Invoke(this, EventArgs.Empty);
+            OnClick(undo, (_, _) => UndoRequested?.Invoke(this, EventArgs.Empty));
             menu.Items.Add(undo);
             var home = new MenuFlyoutItem { Text = "Open Noot" };
-            home.Click += (_, _) => HomeRequested?.Invoke(this, EventArgs.Empty);
+            OnClick(home, (_, _) => HomeRequested?.Invoke(this, EventArgs.Empty));
             menu.Items.Add(home);
             menu.Items.Add(new MenuFlyoutSeparator());
         }
         var close = new MenuFlyoutItem { Text = record == null ? "Close test note" : "Discard note", KeyboardAcceleratorTextOverride = record == null ? "" : "Ctrl+Shift+Delete" };
         _discardItem = close;
-        close.Click += (_, _) => { _discardAfterMenu = true; menu.Hide(); };
+        OnClick(close, (_, _) => { _discardAfterMenu = true; menu.Hide(); });
         menu.Items.Add(close);
         Note.ContextFlyout = menu;
 
@@ -204,7 +225,7 @@ public sealed partial class NoteWindow : Window
             Note.Changed += (_, _) => CaptureRecord();
             Note.ContentSizeChanged += (_, _) => CaptureRecord();
             Note.WindowDragEnded += (_, _) => CaptureRecord();
-            _appWin.Changed += (_, e) => { if (e.DidPositionChange) CaptureRecord(); };
+            _appWin.Changed += AppWindowChanged;
             AddShortcut(Windows.System.VirtualKey.N, Windows.System.VirtualKeyModifiers.Control, () => NewRequested?.Invoke(this, EventArgs.Empty));
             AddShortcut(Windows.System.VirtualKey.Z, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => UndoRequested?.Invoke(this, EventArgs.Empty));
             AddShortcut(Windows.System.VirtualKey.Delete, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => Discard());
@@ -223,12 +244,20 @@ public sealed partial class NoteWindow : Window
         FitWindowToContent();
         CaptureRecord();
     }
+    private void RootChanged(XamlRoot sender, XamlRootChangedEventArgs args) => FitWindowToContent();
+    private void AppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args) { if (args.DidPositionChange) CaptureRecord(); }
 
     private void AddShortcut(Windows.System.VirtualKey key, Windows.System.VirtualKeyModifiers modifiers, Action action)
     {
         var shortcut = new Microsoft.UI.Xaml.Input.KeyboardAccelerator { Key = key, Modifiers = modifiers };
-        shortcut.Invoked += (_, e) => { action(); e.Handled = true; };
+        Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> invoked = (_, e) => { action(); e.Handled = true; };
+        shortcut.Invoked += invoked;
+        _detachNativeEvents.Add(() => shortcut.Invoked -= invoked);
         Note.KeyboardAccelerators.Add(shortcut);
+    }
+    private void OnClick(MenuFlyoutItem item, RoutedEventHandler handler)
+    {
+        item.Click += handler; _detachNativeEvents.Add(() => item.Click -= handler);
     }
 
     public void FocusEditor()
@@ -258,19 +287,30 @@ public sealed partial class NoteWindow : Window
         int version = ++DiscardVersion;
         IsDiscarding = true;
         Note.IsHitTestVisible = false;
-        try { await Note.DiscardAsync(); }
+        using var cancellation = new CancellationTokenSource();
+        _fxCancellation?.Cancel(); _fxCancellation = cancellation;
+        try
+        {
+            var result = Note.AllowNativeFx
+                ? await NootFX.NootFxService.Shared.PlayAsync(() => Note.CaptureForFxAsync(_hwnd),
+                    visible => { if (!_closed && (!visible || Record?.DeletedAt == null)) Note.ShowFxSource(visible); }, cancellation.Token)
+                : new NootFX.FxResult("Reduced motion or editor unavailable", 0);
+            if (version == DiscardVersion) { LastDiscardFrames = result.Frames; LastDiscardOutcome = result.Outcome; }
+        }
         finally
         {
             if (version == DiscardVersion)
             {
-                LastDiscardFrames = Note.DiscardFrames; LastDiscardOutcome = Note.LastDiscardOutcome;
                 IsDiscarding = false; if (!_closed) Note.IsHitTestVisible = true;
             }
+            if (_fxCancellation == cancellation) _fxCancellation = null;
         }
     }
     public void CancelDiscard()
     {
         DiscardVersion++;
+        _fxCancellation?.Cancel();
+        Note.ShowFxSource(true);
         Note.CancelDiscard();
         IsDiscarding = false;
         if (!_closed) Note.IsHitTestVisible = true;

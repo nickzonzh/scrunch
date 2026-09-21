@@ -24,6 +24,7 @@ internal sealed class PaperRenderer : IDisposable
 {
     private const int Columns = PaperGeometry.Columns, Rows = PaperGeometry.Rows;
     private readonly Compositor _com;
+    private readonly FrameworkElement _host;
     private readonly ContainerVisual _root;
     private readonly ContainerVisual _stage;
     private LoadedImageSurface? _surface;
@@ -57,6 +58,7 @@ internal sealed class PaperRenderer : IDisposable
 
     public PaperRenderer(FrameworkElement host, FrameworkElement source)
     {
+        _host = host;
         _com = ElementCompositionPreview.GetElementVisual(host).Compositor;
         _stage = _com.CreateContainerVisual();
         _stage.Offset = new Vector3(PaperGeometry.Padding, PaperGeometry.Padding, 0);
@@ -370,6 +372,7 @@ internal sealed class PaperRenderer : IDisposable
         _disposed = true;
         CancelDiscard();
         Stop();
+        ElementCompositionPreview.SetElementChildVisual(_host, null);
         foreach (var tile in _tiles) { tile.Shade.Brush.Dispose(); tile.Shade.Dispose(); tile.Highlight.Brush.Dispose(); tile.Highlight.Dispose(); tile.Face.Dispose(); tile.Brush.Dispose(); }
         _shadow.Dispose(); _drop.Dispose(); _surface?.Dispose(); _root.Dispose(); _stage.Dispose();
     }
