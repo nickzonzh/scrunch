@@ -1,11 +1,11 @@
-param([switch]$Build, [switch]$Verify, [switch]$Bench, [switch]$VerifyProduct, [switch]$VerifyFx, [switch]$FxLab, [switch]$ShellPreview)
+param([switch]$Build, [switch]$Verify, [switch]$Bench, [switch]$VerifyProduct, [switch]$VerifyFx, [switch]$FxLab, [switch]$ShellPreview, [switch]$VerifyTray)
 $ErrorActionPreference = 'Stop'
 $scrunchOutput = Join-Path $PSScriptRoot 'artifacts/scrunch-compact'
 $scrunchExecutable = Join-Path $scrunchOutput 'Scrunch.exe'
 if ($Build -or !(Test-Path -LiteralPath $scrunchExecutable)) {
     $runningScrunch = Get-Process -Name Scrunch -ErrorAction SilentlyContinue |
         Where-Object { $_.Path -eq $scrunchExecutable }
-    if ($runningScrunch) { throw 'Close the checked Scrunch app and any comparison bench before rebuilding.' }
+    if ($runningScrunch) { throw 'Use Quit in the Scrunch tray menu or shell before rebuilding. Closing the shell only hides it.' }
     dotnet build (Join-Path $PSScriptRoot 'Noot.Proto/Noot.Proto.csproj') -p:Platform=x64 -o $scrunchOutput
     if ($LASTEXITCODE -ne 0) { throw 'Scrunch build failed. See the build output above.' }
 }
@@ -13,6 +13,7 @@ $scrunchWinApp = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.s
 if (!(Test-Path -LiteralPath $scrunchWinApp)) { throw 'Restore Scrunch first; its existing WinApp SDK package supplies the native run tool.' }
 $scrunchArguments = @('run', (Join-Path $PSScriptRoot 'Noot.Proto/Noot.Proto.csproj'), '--arch', 'x64', '--no-build', '-p', "OutDir=$scrunchOutput\", '--detach')
 if ($Verify) { $scrunchArguments += @('--args', '--verify') }
+elseif ($VerifyTray) { $scrunchArguments += @('--args', '--tray-check --verify-tray') }
 elseif ($VerifyProduct) { $scrunchArguments += @('--args', '--verify-product') }
 elseif ($VerifyFx) { $scrunchArguments += @('--args', '--verify-fx') }
 elseif ($FxLab) { $scrunchArguments += @('--args', '--fx-lab') }

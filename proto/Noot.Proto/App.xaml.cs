@@ -1,4 +1,4 @@
-﻿using Windows.ApplicationModel;
+using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -61,6 +61,7 @@ public partial class App : Application
                 // Repeatable native UI/restart checks without touching everyday notes.
                 if (arguments.Contains("--shell-preview")) directory = System.IO.Path.Combine(AppContext.BaseDirectory,
                     arguments.Contains("--visual-fixture") ? "product-check-shell-visual" : "product-check-shell-preview");
+                if (arguments.Contains("--tray-check")) directory = System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-tray");
 #endif
                 _window = new ProductWindow(new NoteStore(directory));
             }
@@ -73,8 +74,12 @@ public partial class App : Application
                 Exit(); return;
             }
         }
-        _window.AppWindow.Show();
-        _window.Activate();
+        if (_window is ProductWindow product)
+        {
+            product.Start(arguments.Contains("--startup"));
+            Program.Ready(() => product.ShowShell(fromTray: false));
+        }
+        else { _window.AppWindow.Show(); _window.Activate(); }
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
