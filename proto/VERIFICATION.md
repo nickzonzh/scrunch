@@ -1,5 +1,17 @@
 # Verification
 
+## Dark Acrylic neutral-tint follow-up, 21 September 2026
+
+- Dark charcoal remains #202020; tint opacity increases from 0.18 to **0.40**
+  and luminosity from 0.78 to **0.86**. Light mode and fallback colours are unchanged.
+- Default Debug x64 build: **zero warnings/errors**. No new functional code or
+  tests were added for this material-only adjustment; the 45-check product run
+  below predates this change.
+- Runtime diagnostics confirmed the new values with Acrylic `Active` during
+  desktop inspection. A reliable active-state comparison against the controlled
+  warm floral wallpaper remains pending: subsequent captures showed `Fallback`.
+  Solid fallback screenshots are not evidence of the new translucent appearance.
+
 ## Small shell refinements after feedback, 21 September 2026
 
 - Shortcut conflict: neutral two-line inline notice, 12-DIP icon and 24-DIP

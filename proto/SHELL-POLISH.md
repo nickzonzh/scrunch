@@ -65,7 +65,7 @@ The final palette is deliberately frostier than the stock Thin preset:
 | Theme | TintColor | TintOpacity | LuminosityOpacity | FallbackColor |
 |---|---|---:|---:|---|
 | Light | #FFF3F3F3 | 0.12 | 0.72 | #FFF3F3F3 |
-| Dark | #FF202020 | 0.18 | 0.78 | #FF202020 |
+| Dark | #FF202020 | 0.40 | 0.86 | #FF202020 |
 
 The old luminosity values were 0.44 / 0.64 with zero tint opacity. Custom values
 must be reapplied on theme changes. The shared XAML configuration still controls
@@ -74,6 +74,10 @@ refreshes our palette without calling the base notification implementation,
 which rejected its target during a live root-theme switch on this SDK/host.
 Unsupported/forced fallback uses a solid composition brush; high contrast uses
 the system background. There is no extra fake-glass layer or custom blur.
+
+The dark-only follow-up raises tint from 0.18 to 0.40 and luminosity from 0.78
+to 0.86 using the same neutral #202020 charcoal. It reduces the warm wallpaper
+cast without changing light mode, fallback colours, or the native blur pipeline.
 
 The title area extends the same backdrop using `ExtendsContentIntoTitleBar` and
 `SetTitleBar` on an empty 32-DIP drag strip. It adds no duplicate logo or title.

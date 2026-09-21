@@ -61,8 +61,10 @@ internal sealed class ShellBackdrop : SystemBackdrop
         // Custom values opt out of the controller's automatic theme palette.
         // Reapply on configuration changes; Windows still owns policy fallback.
         _controller.TintColor = dark ? Color.FromArgb(255, 32, 32, 32) : Color.FromArgb(255, 243, 243, 243);
-        _controller.TintOpacity = dark ? .18f : .12f;
-        _controller.LuminosityOpacity = dark ? .78f : .72f;
+        // A stronger neutral veil keeps warm wallpapers from colouring the
+        // entire dark shell while still letting desktop variation show through.
+        _controller.TintOpacity = dark ? .40f : .12f;
+        _controller.LuminosityOpacity = dark ? .86f : .72f;
         _controller.FallbackColor = FallbackColour(root);
     }
 
