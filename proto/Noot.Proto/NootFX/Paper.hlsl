@@ -76,19 +76,22 @@ float4 PS(Vertex i, bool front : SV_IsFrontFace) : SV_TARGET {
     facet*=dot(facet,n)<0?-1:1;
     // Retain broad panel lighting but let intersecting creases read crisply.
     float crease=smoothstep(.015,.24,1-abs(dot(n,facet)));
-    n=normalize(lerp(n,facet,(.26+.30*crease)*origin.z));
+    n=normalize(lerp(n,facet,(.22+.22*crease)*origin.z));
     // Orient toward the eye for double-sided paper, keep the reverse unprinted.
     float facing=n.z; n*=facing<0?-1:1;
     float3 printed=note.Sample(linearClamp,i.uv).rgb;
     float3 base=facing>0?printed:paperColour.rgb;
     // Prepared normals point toward the eye for the printed face at rest.
-    float diffuse=saturate(dot(n,light));
+    // Broad matte response: fill grazing planes without erasing crease normals.
+    float diffuse=saturate((dot(n,light)+.18)/1.18);
     float3 q=lightPosition(i.world);
     float visibility=0;
     [unroll] for(int y=-1;y<=1;y++) [unroll] for(int x=-1;x<=1;x++)
         visibility+=foldDepth.SampleCmpLevelZero(lightCompare,q.xy+float2(x,y)/1024.0,saturate(q.z-.0012));
     visibility/=9;
-    float lighting=.52+.48*diffuse*visibility;
+    // Paper scatters light into opposing folds. Keep the occlusion cue, but do
+    // not extinguish the entire directional term inside the compact wad.
+    float lighting=.66+.34*diffuse*lerp(.72,1,visibility);
     lighting=lerp(1,lighting,saturate(origin.z*5));
     float3 rgb=base*lighting;
     // Keep folds opaque to one another; opacity is applied once after resolving.

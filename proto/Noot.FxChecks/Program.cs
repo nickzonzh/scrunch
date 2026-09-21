@@ -60,6 +60,24 @@ for (int i = 1; i <= 1000; i++)
 }
 Check(last == new DiscardPose(1, 1, 0), "Continuous discard finishes compact, translated and invisible");
 Check(DiscardMotion.At(.72f) == new DiscardPose(1, 0, 1), "Compact paper holds briefly before release");
+float TimeAt(float deformation, bool baseline)
+{
+    float low = 0, high = 1;
+    for (int i = 0; i < 24; i++)
+    {
+        float p = (low + high) / 2, t = Math.Clamp(p / .70f, 0, 1);
+        float d = baseline ? t * t * (3 - 2 * t) : DiscardMotion.At(p).Deformation;
+        if (d < deformation) low = p; else high = p;
+    }
+    return high * (float)DiscardMotion.DurationMs;
+}
+float collapseBefore = TimeAt(.85f, true) - TimeAt(.35f, true);
+float collapseAfter = TimeAt(.85f, false) - TimeAt(.35f, false);
+Check(collapseAfter > collapseBefore * 1.15f && TimeAt(.2f, false) < TimeAt(.2f, true),
+    "Main collapse gains at least 15% reading time; initial buckle arrives earlier");
+Check(DiscardMotion.DurationMs == 760 && DiscardMotion.At(.70f) == new DiscardPose(1, 0, 1),
+    "Timing redistribution preserves total duration and compact arrival");
+Console.WriteLine($"Nominal collapse (deformation .35-.85): {collapseBefore:F2} -> {collapseAfter:F2}ms");
 
 foreach (var name in FxVariation.Families)
 {
@@ -131,4 +149,47 @@ for (uint seed = 0; seed < 10000; seed++)
     }
 }
 Check(true, "10,000 exact seeds: bounded variation and coherent gather/hold/release timeline");
+// Replay after unrelated seeds and a fresh asset read. Include the actual
+// selected/reflected prepared path, normals, original ink UVs and elapsed-time
+// poses, rather than checking only that FromSeed immediately equals itself.
+string ReplayFingerprint(uint seed)
+{
+    var v = FxVariation.FromSeed(seed);
+    var prepared = new PaperBake(Path.Combine(Path.GetDirectoryName(path)!, v.FamilyName + ".nfx"));
+    using var stream = new MemoryStream();
+    using var writer = new BinaryWriter(stream);
+    writer.Write(System.Text.Json.JsonSerializer.Serialize(v));
+    for (int ms = 0; ms <= 800; ms++)
+    {
+        var pose = DiscardMotion.At((float)(ms / (DiscardMotion.DurationMs * v.DurationScale)), v.Hold);
+        writer.Write(pose.Deformation); writer.Write(pose.Throw); writer.Write(pose.Opacity);
+    }
+    int side = (int)Math.Sqrt(prepared.VertexCount);
+    int sx = (v.Orientation & 1) == 0 ? 1 : -1, sy = (v.Orientation & 2) == 0 ? 1 : -1;
+    for (int frame = 0; frame < prepared.FrameCount; frame++)
+    for (int id = 0; id < prepared.VertexCount; id++)
+    {
+        int x = id % side, y = id / side;
+        int reflected = (sy < 0 ? side - 1 - y : y) * side + (sx < 0 ? side - 1 - x : x);
+        writer.Write(prepared.UVs[id].X); writer.Write(prepared.UVs[id].Y);
+        for (int component = 0; component < 2; component++)
+        {
+            var sample = prepared.Samples[(frame * prepared.VertexCount + reflected) * 2 + component];
+            writer.Write(sample.X * sx); writer.Write(sample.Y * sy); writer.Write(sample.Z);
+        }
+    }
+    writer.Flush();
+    return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream.ToArray()));
+}
+var replaySeeds = FxVariation.GoldenSeeds.Append(uint.MaxValue).ToArray();
+var fingerprints = replaySeeds.ToDictionary(s => s, ReplayFingerprint);
+foreach (uint seed in replaySeeds.Reverse())
+{
+    _ = ReplayFingerprint(unchecked(seed + 101));
+    if (ReplayFingerprint(seed) != fingerprints[seed]) throw new Exception("Replay trajectory depends on previous seed or asset load");
+}
+Check(fingerprints.Values.Distinct().Count() == replaySeeds.Length,
+    "Golden seeds and uint max replay byte-exact timing, throw and reflected prepared paths after unrelated seeds and fresh asset loads");
+if (args is ["--replay-manifest", var manifest])
+    File.WriteAllText(manifest, System.Text.Json.JsonSerializer.Serialize(fingerprints, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(FxVariation.GoldenSeeds.Select(FxVariation.FromSeed)));

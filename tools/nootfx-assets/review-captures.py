@@ -13,6 +13,10 @@ poses = ['0', '0.2', '0.4', '0.6', '0.8', '1']
 
 def held(file, size=250):
     im = Image.open(file).convert('RGB')
+    # A successful screen-capture command can still return a black desktop
+    # (for example, a non-interactive sandbox). Never call that visual evidence.
+    if max(high-low for low, high in im.getextrema()) < 12:
+        raise ValueError(f'Blank/solid capture; rerun on the interactive desktop: {file}')
     w, h = im.size
     # Overlay padding is 65% of max paper dimension on each side. Include the
     # entire sheet plus modest surrounding space at a consistent relative scale.

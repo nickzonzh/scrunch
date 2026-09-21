@@ -87,6 +87,7 @@ public sealed partial class NoteWindow : Window
     internal long NativeHandle => _hwnd.ToInt64();
 #if DEBUG
     internal double RasterScaleForCheck => Note.XamlRoot.RasterizationScale;
+    internal WeakReference<NoteView> ViewReferenceForCheck => new(Note);
 #endif
     internal bool HasNativeFrame => (GetWindowLong(_hwnd, -16) & 0x00C40000) != 0 || (GetWindowLong(_hwnd, -20) & 0x00020301) != 0;
     internal void PinForInspection()
@@ -141,13 +142,20 @@ public sealed partial class NoteWindow : Window
         {
             Closed -= closed;
             _closed = true; _fxCancellation?.Cancel();
+            // Closed is terminal, but DWM may still present this HWND while
+            // backdrop/content teardown runs. Hide first to avoid a white
+            // rectangle flashing after the discarded paper has faded away.
+            _appWin.Hide();
+            Activated -= FirstActivated; Note.Loaded -= FocusWhenLoaded;
             foreach (var detach in _detachNativeEvents) detach();
             _detachNativeEvents.Clear(); Note.KeyboardAccelerators.Clear();
             if (_observedRoot != null) { _observedRoot.Changed -= RootChanged; _observedRoot = null; }
             _appWin.Changed -= AppWindowChanged;
-            Note.CancelDiscard(); Note.ReleaseGraphics();
-            Note.ContextFlyout = null; _menu?.Items.Clear();
-            _transparency.Dispose(); Content = null;
+            Note.ReleaseForClose();
+            _menu?.Items.Clear(); _menu = null; _discardItem = null;
+            RecordChanged = null; NewRequested = null; UndoRequested = null;
+            HomeRequested = null; DiscardRequested = null;
+            _transparency.Dispose(); SystemBackdrop = null; Content = null;
         };
         Closed += closed;
 
@@ -232,6 +240,10 @@ public sealed partial class NoteWindow : Window
             AddShortcut(Windows.System.VirtualKey.N, Windows.System.VirtualKeyModifiers.Control, () => NewRequested?.Invoke(this, EventArgs.Empty));
             AddShortcut(Windows.System.VirtualKey.Z, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => UndoRequested?.Invoke(this, EventArgs.Empty));
             AddShortcut(Windows.System.VirtualKey.Delete, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => Discard());
+            // The focused TextBox consumes Delete combinations before parent
+            // accelerators. Honor the advertised discard shortcut in preview.
+            Note.PreviewKeyDown += DiscardPreviewKeyDown;
+            _detachNativeEvents.Add(() => Note.PreviewKeyDown -= DiscardPreviewKeyDown);
         }
 
         // Backup: AppWindow sizing pre-Activate is unreliable on some machines.
@@ -249,6 +261,19 @@ public sealed partial class NoteWindow : Window
     }
     private void RootChanged(XamlRoot sender, XamlRootChangedEventArgs args) => FitWindowToContent();
     private void AppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args) { if (args.DidPositionChange) CaptureRecord(); }
+
+    private void DiscardPreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (_closed || e.Key != Windows.System.VirtualKey.Delete) return;
+        bool Down(Windows.System.VirtualKey key) => Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(key).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        if (Down(Windows.System.VirtualKey.Control) && Down(Windows.System.VirtualKey.Shift) &&
+            !Down(Windows.System.VirtualKey.Menu) && !Down(Windows.System.VirtualKey.LeftWindows) && !Down(Windows.System.VirtualKey.RightWindows))
+        {
+            e.Handled = true;
+            Discard();
+        }
+    }
 
     private void AddShortcut(Windows.System.VirtualKey key, Windows.System.VirtualKeyModifiers modifiers, Action action)
     {

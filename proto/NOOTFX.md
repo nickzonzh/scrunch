@@ -1,7 +1,7 @@
 # NootFX native discard
 
-This milestone adds three Noot-owned paper trajectories and reproducible variation
-without changing the native D3D11 / DirectComposition architecture. The ordinary
+This candidate refines matte shading and collapse timing on the three Noot-owned
+paper trajectories without changing the native D3D11 / DirectComposition architecture. The ordinary
 note remains a WinUI editor. Only its captured pixels enter the effect.
 
 ## Families and offline authoring
@@ -113,6 +113,14 @@ There is no overshoot, cartoon spin or long travel. Hold length changes the star
 of release, not the total duration. Slow playback uses the identical normalized
 timeline multiplied to approximately 18 seconds.
 
+Gather now integrates a short acceleration (12% of gather time), a steady middle
+and a short deceleration (18%). Position and speed are continuous. At nominal
+760ms, deformation 0.2 arrives at 122.4ms instead of 152.7ms; deformation 0.35-0.85
+takes 226.1ms instead of 189.9ms (+19.1%). Gather still finishes at 532ms, with the
+same seeded hold and release. The existing baked trajectories already ease their
+individual folds, so the former whole-gather smoothstep unnecessarily rushed the
+middle while lingering on the almost-flat start.
+
 ## Aspect handling and material
 
 The exact rectangular capture hands off unchanged. From deformation 0.15 to 1,
@@ -125,9 +133,17 @@ solve for each aspect. The checked supported shapes are 220x180, 440x180, 220x44
 The shader retains perspective-correct captured ink, an unprinted coloured back,
 4x MSAA (single-sample fallback), a 1024-square filtered fold-shadow map and a soft
 desktop shadow. Baked normals are blended toward the actual geometric facet
-normal by 26â€“56%, depending on crease disagreement and deformation progress.
+normal by 22-44% (previously 26-56%), depending on crease disagreement and deformation progress.
 This reinforces fold direction without treating the entire sheet as hard facets
 at handoff. Opaque fold rendering and a single composite fade preserve occlusion.
+
+Ambient fill is 0.66 instead of 0.52; directional contribution is 0.34 instead of
+0.48, with a restrained 0.18 diffuse wrap at grazing angles. Fold visibility now
+attenuates the directional term by at most 28%, instead of extinguishing it.
+There is still no specular lobe. Front and unprinted back use the same matte
+response; existing captured grain/ink stays intact. No new texture, noise, mesh,
+asset, sample buffer or render pass was added. Geometry and shadow-map resolution
+are unchanged. This lifts opposing planes without rounding the silhouette.
 
 ## Lifecycle and native architecture
 
@@ -160,7 +176,8 @@ dotnet run --project proto/Noot.GeometryChecks/Noot.GeometryChecks.csproj
 ```
 
 The DEBUG-only isolated lab has explicit uint seed input, previous/next seed,
-family/orientation/timing display, replay, production speed, slow playback, held
+Next QA seed, family/orientation and gather/hold/exit timing display, replay,
+production speed, slow playback, held
 progress, sample notes and screen-corner placement. Replay restores the existing
 note after rendering; Delete latest test note uses the ordinary saved-discard
 path. Hold has a 60-second safety timeout. These controls do not appear in Release.
@@ -179,7 +196,377 @@ explicitly authorized. Its frame-artifact mode supports at most 30 fps; an initi
 60 fps recording request failed and is retained separately. Actual recording
 cadence is reported in each `manifest.json` and is not a GPU frame-rate measure.
 
-## Current verification evidence
+## Material candidate review (21 September 2026)
+
+The bakes, family mapping, reflection mapping, throw bounds and seed contract are
+unchanged. Regeneration still matches every asset and provenance byte. The native
+held captures confirm the same silhouettes and directional crease layout.
+
+Reviewed all 18 golden seeds at six held stages, all three families on the six
+size/colour/content samples, and every distinct timestamped frame from the 18
+production-speed discard recordings. The latter are temporal-sequence reviews
+of native recordings, not continuous human playback observation. All recorded
+deletions closed the note, went dormant and restored it through Undo. The new
+Next QA seed control was checked against the entire fixture including wraparound.
+
+| Seed | Family | Reflection | Throw | Total / gather / hold / exit (ms, rounded) | Visual assessment |
+| ---: | --- | --- | --- | --- | --- |
+| 0 | Corner | None | Right | 752 / 526 / 46 / 180 | Lower-right crush; compact irregular wad |
+| 1 | Side | None | Right | 750 / 525 / 28 / 197 | Right edge gathers; open asymmetric bundle closes |
+| 2 | Centre | None | Right | 724 / 507 / 40 / 177 | Interior cup; broad reverse flap closes into hooked wad |
+| 3 | Corner | X | Left | 764 / 535 / 49 / 180 | Lower-left origin; coherent reflected folds |
+| 4 | Side | X | Right | 759 / 531 / 41 / 187 | Left edge gathers; coherent opposing throw |
+| 5 | Centre | X | Left | 785 / 549 / 48 / 187 | Reflected cup and flap; compact angular finish |
+| 6 | Corner | Y | Left | 752 / 526 / 38 / 188 | Upper-right crush; preserved ink and volume |
+| 7 | Side | Y | Left | 790 / 553 / 51 / 186 | Right edge, reversed vertical gathering order |
+| 8 | Centre | Y | Right | 774 / 542 / 37 / 195 | Reflected interior cup; upright irregular finish |
+| 9 | Corner | XY | Left | 765 / 536 / 30 / 200 | Upper-left crush; coherent compact finish |
+| 10 | Side | XY | Right | 761 / 533 / 27 / 202 | Left edge, reversed vertical order; short hold still visible |
+| 11 | Centre | XY | Left | 789 / 552 / 47 / 189 | Reversed cup/flap; asymmetric upright finish |
+| 42 | Corner | Y | Left | 732 / 512 / 26 / 193 | Same geometry as 6; brisk timing remains legible |
+| 99 | Corner | X | Right | 728 / 510 / 38 / 181 | Same geometry as 3; strongest reach stays restrained |
+| 314 | Centre | None | Left | 791 / 554 / 50 / 187 | Same geometry as 2; longer timing and opposite exit |
+| 1337 | Centre | X | Right | 744 / 521 / 36 / 188 | Same geometry as 5; compact finish, shorter reach |
+| 9787 | Side | Y | Right | 722 / 505 / 40 / 176 | Minimum-duration case remains readable |
+| 4399 | Side | Y | Left | 798 / 559 / 49 / 190 | Maximum-duration case remains brisk |
+
+No weak/outlier seed justified changing the mapping. Matte fill removes the
+large dark patches that made the old final wad resemble foil or rock; crease
+edges remain angular and visible. Existing grain is most legible on yellow and
+peach paper. No silky undulation or new soft geometry was introduced.
+
+Variation is deliberately finite: **three trajectories, twelve reflected
+family/orientation combinations**, then bounded timing and release variation.
+Reflections move the collapse origin and preserve ink, but are mathematically
+reflections, not additional independently authored trajectories. Seeds with the
+same family/orientation have identical held geometry. The three primary families
+do differ in origin, intermediate motion and final shape; this is more than one
+excellent animation with different throws. Repeated side-by-side QA reveals the
+finite library; no claim of a unique wad for every uint seed is made.
+
+Initial screen captures from the sandbox were black and rejected. The fresh
+interactive-desktop capture suite is the visual evidence. The review-sheet tool
+now rejects solid/blank held captures. Computer Use did not list the lab window;
+WinApp UI Automation and native screen recordings supplied the evidence.
+
+Candidate evidence is under `artifacts/nootfx-material-final-ui/`:
+`material-before-after.png`, `golden-1.png` through `golden-6.png`,
+`aspect-review-0.png` through `aspect-review-5.png`, all 18
+`seed-<seed>-production.mp4` recordings and `motion-review-<seed>.png` sheets,
+`seed-ui-verification.json` and `qa-control-verification.json`.
+`artifacts/nootfx-material-checked/seed-summary.json` records exact timing,
+direction, reach, rotation and vertical departure per seed.
+
+### Native close investigation
+
+The material pass exposed an intermittent failure in the existing closed-window
+collection check. An unchanged `41ae31b` executable reproduced it: 2, 11, 20 and
+30 closed windows remained at the four checkpoints. Candidate runs also alternated
+between passing and accumulating closed windows. Extra dispatcher waits and
+collections did not reliably resolve it and were removed.
+
+With the user's explicit scope extension, close now performs terminal teardown:
+detach pending activation/focus and view Loaded/Unloaded handlers, clear managed
+callbacks from the view to its owner and from the window to the product, release
+the shadow image/visual references and menu, and explicitly disconnect the system
+backdrop. A closed view cannot reinitialize graphics or attach its asynchronously
+loaded shadow image. Temporary Unloaded still uses the original reloadable path.
+No collection or retention polling was added to production.
+
+Heap inspection after a failed test found closed objects without ordinary managed
+roots or positive sampled COM-wrapper counts after the test returned. That did
+not identify one definitive native root. The fix removes the remaining lifetime
+links explicitly; repeated native collection/resource checks are the evidence for
+its effectiveness. The DEBUG check now tracks both windows and their NoteViews,
+using the original collection timing and threshold (at most two); the current
+test-local note normally accounts for one. Independent fallback checks run even
+if the retained-object result will fail at the end.
+
+Failed runs and successful reruns remain separately named in
+`artifacts/nootfx-material-checked/`; diagnostic dumps are local ignored artifacts
+under `artifacts/diagnostics/`. No ordinary user notes were used.
+
+The final physical-key check also reproduced an existing `Ctrl+Shift+Delete`
+failure in the unchanged executable: the focused TextBox consumed Delete before
+the parent accelerator. A narrow preview handler now routes that exact existing
+shortcut to immediate saved discard; other Delete combinations retain text-editing
+behavior. It is detached during close. This follows Microsoft's
+[preview-key routing guidance](https://learn.microsoft.com/en-us/windows/apps/develop/input/keyboard-accelerators#override-default-keyboard-behavior).
+The native UI script now sends the real shortcut from the focused editor and
+checks immediate close, absence of an overlay, and exact-text Undo.
+
+### Candidate verification configuration
+
+Debug builds use `dotnet build proto/Noot.Proto/Noot.Proto.csproj -p:Platform=x64
+-o proto/artifacts/nootfx-material-checked`. Local Release validation uses
+`-c Release -p:Platform=x64 -p:PublishTrimmed=false
+-o proto/artifacts/nootfx-material-release`, matching the previous checked
+Release runtime configuration. Both final builds have zero warnings/errors.
+The shipped source assets/shader match both output directories, exactly three
+bakes remain, and DEBUG lab strings are absent from the Release assembly.
+
+An initial Release rebuild omitted `PublishTrimmed=false`; the existing project
+default disables reflection-based JSON serialization and its verification report
+could not be written. That attempt is preserved in
+`artifacts/nootfx-material-release/trimmed-config-check-failure.txt`. Fresh reports
+from the untrimmed validation build replace the old reports; trimmed publishing
+is not validated by this milestone. Packaging/release configuration remains out
+of scope.
+
+### Final candidate results
+
+Verified on Windows 10 / NVIDIA GeForce RTX 3060 Ti, on both attached displays
+(100% scaling, including negative desktop coordinates):
+
+| Check | Result |
+| --- | --- |
+| Final native FX lifecycle | 62 passed; 80 completed effects, 30 same-note replays, 40 saved delete/reopen cycles, injected initialization/asset/render failures, recovery, native reduced-motion fast path and final idle |
+| Retention repetitions | Four fresh runs after explicit teardown: 320 completed effects and 160 delete/reopen cycles; closed-window counts stayed at 1 in every batch; all three runs that also tracked closed NoteViews stayed at 1 for those too |
+| Release product / original paper | 16 / 25 passed, including persistence, cancellation, Undo, editing, reduced motion and idle shutdown |
+| Prepared assets / timing / seeds | 32 passed, including 10,000 deterministic seeds and the longer middle-collapse interval |
+| Storage / geometry | 12 passed; 466,560 projected and 1,570,752 crumple patches passed |
+| Golden UI suite | 42 passed; all 18 seeds, 162 held captures, six aspect/content samples and 18 real discard/Undo recordings |
+| QA seed control | Entire fixed fixture and wraparound passed |
+| Extended native UI suite | 13 passed; normal/slow recordings, four corners, six samples, Undo and subsequent editing |
+| Final focused-editor UI suite | 7 passed; held-playback Undo, completed-discard recovery, actual Ctrl+Shift+Delete and exact-text Undo |
+| Assets | Byte-exact regeneration; same three bakes, 3,716,520 bytes total; no additional rendering resources or passes |
+
+| Final performance observation | Measured value |
+| --- | --- |
+| Median of per-effect median frame intervals | 15.26ms |
+| Largest per-effect frame-interval p95 | 29.91ms |
+| Median CPU draw/submit/present duration | 0.241ms; largest per-effect p95 1.42ms; GPU time not measured |
+| Same-note private memory after GC, repeats 10/20/30 | 180.5 / 177.9 / 180.4 MiB |
+| Same-note handles | 1,357 / 1,352 / 1,357 |
+| Delete/reopen private memory after GC, cycles 10/20/30/40 | 257.7 / 244.2 / 251.2 / 248.7 MiB |
+| Delete/reopen handles | 2,741 / 2,659 / 2,679 / 2,699 |
+| Closed windows / NoteViews after each GC | 1 / 1; no accumulating batch |
+| Cold / 13-note idle CPU over 1.2 seconds | 0 / 78.125ms of total process CPU; zero FX frames |
+| Normal-use devices | One shared lazy device; fault injection deliberately recreates it |
+
+The fresh unchanged-build probe measured 15.31ms median frame intervals, 32.10ms
+largest per-effect p95 and 0.24ms median draw time. Its shorter 20-effect workload
+is a host-cadence cross-check, not a statistically controlled benchmark. The three
+earlier teardown runs ranged from 12.19 to 17.98ms median frame intervals and
+0.23 to 0.25ms median draw time. This supports no material increase in rendering
+cost, but does not establish a frame-time improvement or guaranteed 60fps.
+
+Total 13-note process idle CPU varied from 46.875 to 250ms in those runs, versus
+15.625ms in the baseline probe. That includes WinUI and collection work and is
+not an isolated FX CPU measure; it should not be described as zero application
+CPU or a proven baseline-equivalent idle CPU result. The directly verified
+dormancy invariant is zero FX frames with the timer stopped. Memory stayed in
+the previous milestone's approximate range without closed-object accumulation.
+These finite checks do not prove an unbounded leak-free run.
+
+Final native reports/logs are `artifacts/nootfx-material-checked/fx-verification.json`,
+`nootfx.jsonl` and `final-performance-summary.json`; the three earlier teardown
+runs are `fx-verification-close-fix-1.json` through `-3.json`, with matching logs
+and `close-fix-performance-summary.json`. Fresh baseline comparison is preserved
+under `artifacts/nootfx-signature-checked/*matched-idle*`. Release reports are in
+`artifacts/nootfx-material-release/`.
+
+Additional native captures are in `artifacts/nootfx-material-polish-ui/`:
+`normal.mp4`, `slow.mp4`, their timestamped frames, `normal-review.png`,
+`slow-review.png`, `corners-review.png` and `polish-ui-verification.json`.
+Reviewed all 24 distinct normal recording images, 36 timestamp-spaced slow
+samples and all four source/fold corner pairs. Those videos recorded at about
+30fps; the earlier 18-seed recordings achieved 22.72-23.91fps (360 distinct images).
+Neither recorder rate is the renderer's GPU frame rate. Corner images include
+black pixels outside desktop bounds, not missing paper inside the screen.
+The final seven-check UI report and held captures are in
+`artifacts/nootfx-material-native-ui/`; the pre-fix keyboard reproduction is
+`artifacts/nootfx-material-polish-ui/keyboard-baseline.json`.
+
+**Recommendation: visually finished enough for this candidate.** The lighter
+matte planes preserve the stiff crease structure and the unchanged silhouettes;
+the longer middle collapse reads clearly without extending deletion. No reviewed
+seed needs remapping. Centre Collapse still exposes a broad reverse flap before
+its hooked final wad, close held views reveal the panel lattice, and repeated
+side-by-side playback reveals the finite three-trajectory library. Those are
+accepted stylisation limits, not a newly weak seed. Mixed-DPI / Windows 11 and
+long-duration resource testing remain outside this host's evidence. Stop visual
+tuning here and retain the captured suite for future regressions.
+
+## Structured variation sweep (21 September 2026)
+
+This follow-up inspected the live family/seed/reflection mapping, shader, prepared
+assets, throw and timeline, lab controls, golden fixture and verification scripts
+before changing implementation. The initial fresh Debug assembly matched the
+material-pass assembly byte for byte (SHA-256
+`86536FDEBE963A1E835796DAF5B7884DA4EEDC96CF84FA7327E0693C22B8AE17`).
+The existing square and aspect held captures were therefore reviewed as applicable
+evidence, alongside fresh production, slow and held captures.
+
+### Coverage and judgement
+
+All 18 golden seeds were reviewed at production speed through their timestamped
+image sequences, slow playback through 36 timestamp-spaced observations plus the
+source frame, and held deformation. This is native temporal-sequence inspection,
+not continuous human playback observation. The current sweep held 0, .4, .7 and 1;
+the earlier square sweep supplied 0, .2, .4, .6, .8 and 1 for every seed.
+
+The mapping and exact durations are unchanged. The additional rectangle matrix
+below runs each row at both speeds, records saved deletion/close, checks dormant
+overlay state, and restores exact text through Undo. Every seed also has the
+earlier common 440x440 held comparison, so size/colour differences do not stand
+in for family differences.
+
+| Seed | Family | Reflection | Throw | Duration ms | Fresh paper DIPs | Visual assessment |
+| ---: | --- | --- | --- | ---: | --- | --- |
+| 0 | Corner | None | Right | 752 | 440x440 | Corner-led crush; compact irregular reference |
+| 1 | Side | None | Right | 750 | 440x440 | Edge-led roll and unequal closing flaps |
+| 2 | Centre | None | Right | 724 | 440x440 | Interior cup; reverse flap closes to hooked wad |
+| 3 | Corner | X | Left | 764 | 440x180 | Opposite corner gathers wide paper into volume |
+| 4 | Side | X | Right | 759 | 220x440 | Narrow upright intermediate closes compactly |
+| 5 | Centre | X | Left | 785 | 220x180 | Small cup remains legible; no needle-like finish |
+| 6 | Corner | Y | Left | 752 | 220x440 | Upper-corner origin; tall axis compacts coherently |
+| 7 | Side | Y | Left | 790 | 220x180 | Reversed gathering order; compact asymmetric bundle |
+| 8 | Centre | Y | Right | 774 | 440x180 | Broad middle pose closes; no final flat sausage |
+| 9 | Corner | XY | Left | 765 | 220x180 | Opposite upper-corner crush; small wad retains irregularity |
+| 10 | Side | XY | Right | 761 | 440x180 | Edge origin distinct from 3 and 8; short hold remains visible |
+| 11 | Centre | XY | Left | 789 | 220x440 | Deep cup with upright hooked finish; not a spike |
+| 42 | Corner | Y | Left | 732 | 300x320 dense | Dense ink survives until occluded; brisk collapse coherent |
+| 99 | Corner | X | Right | 728 | 300x320 empty | Placeholder stays readable; longest reach remains restrained |
+| 314 | Centre | None | Left | 791 | 300x320 dense | Reverse flap and hooked finish consistent with seed 2 |
+| 1337 | Centre | X | Right | 744 | 440x440 | Reflected cup; same matte material as reference |
+| 9787 | Side | Y | Right | 722 | 300x320 empty | Near-minimum duration remains readable |
+| 4399 | Side | Y | Left | 798 | 300x320 dense | Near-maximum duration does not drag; ink remains attached |
+
+Supplementary **360x240 and 260x360** notes cover moderate wide/tall shapes with
+seeds **0, 4 and 11** (all three families, None/X/XY). They use the ordinary resize
+grip, with UIA bounds and restored dimensions checked. The full supported extrema
+remain **220x180, 440x180, 220x440 and 440x440**; **300x320** covers near-square,
+empty and dense notes. The previous six-colour held matrix was also inspected.
+
+No seed/family/orientation needs remapping, disabling, new timing, different throw
+bounds, aspect compensation or material tuning. All three deformation origins
+are distinct independently of throw, speed and reflection. Text remains attached
+and unmirrored; world-space lighting changes appropriately with reflected folds.
+No reviewed final wad becomes a puck, flower, sphere, needle, sausage or crushed
+featureless blob. Enlarged images reveal angular panels and occasional straight
+flap edges, especially Centre's reverse flap and hooked silhouette. Those are
+consistent stylisation limits rather than a materially worse seed. The finite
+three-trajectory library is recognisable during concentrated repeated review;
+ordinary consecutive seeds change family and do not repeat one identical motion.
+
+### Targeted correction and QA tooling
+
+One actual visual defect was found **after** the deformation had finished:
+production recordings for **3, 6 and 4399** caught a white rectangle for one
+recorded frame during native window close. It occupied the old HWND bounds,
+including transparent padding. Terminal teardown disconnected transparency and
+content while DWM could still present that window. `NoteWindow` now hides its
+AppWindow at the start of the terminal Closed handler, before releasing those
+resources. It adds no timer, delay, frame callback or rendering resource.
+This is an exit correction, not a family-specific geometry defect.
+
+Fresh production reruns across all 18 seeds found **zero white-flash candidates**.
+The controlled fixture check scans every changed production image for the large
+white rectangle, in addition to visual review. The original three failing frames
+remain in `artifacts/nootfx-variation-ui/white-flash-findings.json` with exact paths
+and timestamps. Post-fix findings are in the final UI directory. This finite
+recording sample does not establish that every possible desktop frame was seen.
+
+The lab already had sufficient controls; no lab UI was added. Two bounded native
+capture scripts were added: `verify-fx-variation-ui.ps1` and
+`verify-fx-moderate-ui.ps1`. A moderate-shape capture initially read UIA bounds
+before layout had settled; the script now waits for the requested bounds and
+supports explicit resume. The partial report is retained as
+`resize-read-before-layout.json`. This was a verification race; the actual saved
+paper dimensions were correct.
+
+`Noot.FxChecks` now fingerprints each golden seed plus uint max, including exact
+timing/throw fields, 801 elapsed-time poses, original UVs and every reflected
+prepared position/normal. It replays in reverse order after unrelated seeds and
+fresh asset loads. Two separate process runs produced identical manifests.
+These establish reproducible mapping and prepared paths, not pixel-identical
+wall-clock scheduling or cross-GPU floating-point output. Existing 10,000-seed,
+UV/reflection, compactness, continuity and malformed-asset checks remain in place.
+
+`review-variation.py` adds contact sheets, labelled temporal sequences, enlarged
+silhouette details, white-flash detection and a local video index. WinApp's raw
+MP4 uses constant requested-rate timestamps even when capture runs more slowly;
+playing it directly can accelerate the effect. The `*-walltime.mp4` evidence
+rebuilds actual elapsed timestamps using VFR, without interpolating frames.
+B-frames are disabled so sparse-frame MP4 duration metadata stays correct too.
+Raw recordings, frame indexes and timestamps are retained unchanged.
+
+### Evidence and verification
+
+The compact pack is `artifacts/nootfx-variation-final-ui/index.html`:
+`production-outcomes.png`, `production-details.png`, `held-intermediates.png`,
+18 production videos and 18 slow videos with corrected timestamps. Slow videos
+come from the first sweep, before the terminal hide, with unchanged deformation,
+material and timing. Every production video and held image in the final pack is
+from the post-fix build. The index explicitly identifies this distinction.
+Moderate aspect evidence is `artifacts/nootfx-variation-moderate-ui/index.html`.
+The material-pass square/colour references remain in their original directory.
+
+Both evidence indexes include one production and one slow video per case; the
+moderate pack adds six cases (12 videos). `verify-video-timing.py` verified all
+48 videos against every captured image-change timestamp and full duration.
+
+| Final validation | Result |
+| --- | --- |
+| Debug and Release builds | Passed, zero warnings/errors; Release built with trimming disabled for these native checks |
+| Asset/motion checks | 33 passed, including the new exact replay fingerprints; two process manifests byte-identical |
+| Prepared asset regeneration | All three byte-exact with `author.mjs --check` |
+| Geometry checks | 466,560 projected and 1,570,752 crumple patches passed |
+| Storage checks | 12 passed |
+| Native FX lifecycle | 62 passed; 80 completed effects, 30 same-note replays and 40 saved delete/Undo cycles |
+| Release product / original paper | 16 / 25 passed |
+| Physical keyboard and Undo UI regression | 7 passed |
+| Captured final production cases | 18 golden + six moderate cases passed; zero terminal white-flash candidates |
+
+The final unrecorded native FX run used this development machine's **RTX 3060 Ti**,
+two displays at **100% scaling**. It recorded 46–52 rendered frames per completed
+effect. Statistics below are the median of per-effect medians and largest
+per-effect p95, not pooled percentiles or a controlled before/after benchmark.
+
+| Measurement | Final result |
+| --- | --- |
+| Frame interval | Median 15.597ms; largest per-effect p95 16.270ms |
+| CPU draw/submit/present | Median 0.236ms; largest per-effect p95 0.916ms; GPU execution time not measured |
+| Cold / 13-note idle process CPU, 1.2s | 0 / 15.625ms; zero FX callbacks/frames |
+| Same-note private memory after GC, cycles 10/20/30 | 183.7 / 182.6 / 183.7 MiB |
+| Same-note handles | 1429 / 1417 / 1419 |
+| Delete/Undo private memory after diagnostic GC, cycles 10/20/30/40 | 267.2 / 254.4 / 249.0 / 257.0 MiB |
+| Delete/Undo handles after GC | 2805 / 2722 / 2747 / 2767 |
+| Closed windows / visual trees retained after GC | 1 / 1 at every checkpoint; no growth across cycles |
+| Prepared asset footprint | Unchanged: 3,716,520 bytes total; 625 vertices, 1,152 triangles and 61 frames per family |
+
+The earlier material run measured 15.259ms median frame interval and 0.241ms CPU
+draw/submit/present. The current result supports acceptable pacing and stable
+repetition on this machine; the small difference does not establish a speedup or
+regression. There is no growing retention trend in this bounded sample. Idle FX
+remains dormant; total application CPU is a separate measurement.
+
+The first original-paper Release check reported an anomalous 37.31% of one core
+during its three-second idle sample while evidence video encoding was also
+running. Its complete report is retained as
+`nootfx-variation-release/verification-first-with-video-encoding.json`. A fresh
+repeat with no recording or encoding passed all 25 checks and measured 0.00%.
+The cause of the first process-CPU sample is not established; neither sample is
+a broad claim about application idle cost.
+
+Native lifecycle results and the bounded event slice are in
+`artifacts/nootfx-variation-final/{fx-verification.json,fx-check-events.jsonl,performance-summary.json}`.
+Build/check logs and exact replay manifests are in
+`artifacts/nootfx-variation-checked`; Release reports are in
+`artifacts/nootfx-variation-release`, and the seven UI checks in
+`artifacts/nootfx-variation-native-ui/ui-verification.json`.
+`proto/run.ps1` now launches the final checked candidate; use
+`./proto/run.ps1 -FxLab` to inspect it or `-Build -VerifyFx` to rebuild and verify.
+
+**Final judgement: yes, NootFX delete crumple is visually finished enough to stop
+touching it.** All primary families are distinct, all four reflections remain
+believable with unmirrored text, and the deliberate aspect matrix has no broken
+outlier. Keep the current mappings and accept the visible stylised panel/hook
+character under enlarged inspection. Move on to the **app shell/UI milestone**;
+no shell/UI work was started in this sweep.
+
+## Previous geometry milestone evidence (41ae31b)
 
 Final Debug and Release builds pass with zero warnings/errors. The clean output
 directories contain exactly the three owned bakes, provenance and Vortice notice;

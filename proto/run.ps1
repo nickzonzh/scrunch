@@ -1,6 +1,6 @@
 param([switch]$Build, [switch]$Verify, [switch]$Bench, [switch]$VerifyProduct, [switch]$VerifyFx, [switch]$FxLab)
 $ErrorActionPreference = 'Stop'
-$nootOutput = Join-Path $PSScriptRoot 'artifacts/nootfx-signature-checked'
+$nootOutput = Join-Path $PSScriptRoot 'artifacts/nootfx-variation-final'
 $nootExecutable = Join-Path $nootOutput 'Noot.Proto.exe'
 if ($Build -or !(Test-Path -LiteralPath $nootExecutable)) {
     $runningNoot = Get-Process -Name Noot.Proto -ErrorAction SilentlyContinue |
