@@ -52,19 +52,24 @@ public partial class App : Application
             {
                 bool isolated = arguments.Contains("--verify-product");
 #if DEBUG
-                isolated |= arguments.Contains("--fx-lab") || arguments.Contains("--verify-fx");
+                isolated |= arguments.Contains("--fx-lab") || arguments.Contains("--verify-fx") || arguments.Contains("--shell-preview");
 #endif
                 var directory = isolated
                     ? System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-" + Guid.NewGuid().ToString("N"))
                     : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Noot");
+#if DEBUG
+                // Repeatable native UI/restart checks without touching everyday notes.
+                if (arguments.Contains("--shell-preview")) directory = System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-shell-preview");
+#endif
                 _window = new ProductWindow(new NoteStore(directory));
             }
             catch (Exception error)
             {
-                MessageBox(IntPtr.Zero, "Noot could not open your notes. If Noot is already running, use its window or Ctrl + Alt + N. Otherwise check access to your local Noot folder. Your saved files have not been replaced.\n\n" + error.Message, "Noot", 0x10);
+                MessageBox(IntPtr.Zero, "Scrunch could not open your notes. If Scrunch is already running, use its window or Ctrl + Alt + N. Otherwise check access to your local notes folder. Your saved files have not been replaced.\n\n" + error.Message, "Scrunch", 0x10);
                 Exit(); return;
             }
         }
+        _window.AppWindow.Show();
         _window.Activate();
     }
 

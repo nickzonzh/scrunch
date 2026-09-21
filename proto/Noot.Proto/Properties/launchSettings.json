@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "Noot.Proto (Package)": {
+    "Scrunch (Package)": {
       "commandName": "MsixPackage"
     },
-    "Noot.Proto (Unpackaged)": {
+    "Scrunch (Unpackaged)": {
       "commandName": "Project"
     }
   }

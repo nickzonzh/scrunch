@@ -1,6 +1,11 @@
 # NootFX native discard
 
-This candidate refines matte shading and collapse timing on the three Noot-owned
+NootFX is the retained internal graphics name for **Scrunch**. The current app
+is `artifacts/scrunch-shell/Scrunch.exe`, launched with `run.ps1`. Historical
+reports below retain their original executable names and paths. The shell rename
+does not change the prepared assets, shader, renderer or motion timings.
+
+This candidate refines matte shading and collapse timing on the three Scrunch-owned
 paper trajectories without changing the native D3D11 / DirectComposition architecture. The ordinary
 note remains a WinUI editor. Only its captured pixels enter the effect.
 

@@ -5,8 +5,8 @@ $ErrorActionPreference='Stop'
 $cli=Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
 function Ui { $r=& $cli ui @args; if($LASTEXITCODE){throw "WinApp failed: $args`n$r"}; return $r }
 function Windows { Ui list-windows -a $AppPid --json | ConvertFrom-Json }
-function Note { (Windows | Where-Object title -eq 'Noot' | Select-Object -Last 1).hwnd }
-$main=(Windows | Where-Object title -eq 'Noot — isolated FX lab').hwnd
+function Note { (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd }
+$main=(Windows | Where-Object title -eq 'Scrunch — isolated FX lab').hwnd
 if(!$main -or !(Note)){throw 'Use an idle isolated lab with a sample note on the 100% scale QA display.'}
 function Editor { (Ui inspect NoteText -w (Note) --json | ConvertFrom-Json).windows[0].elements[0] }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null

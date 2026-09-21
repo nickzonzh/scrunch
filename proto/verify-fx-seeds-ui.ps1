@@ -7,8 +7,8 @@ $cli = 'C:\Users\Nick\.nuget\packages\microsoft.windows.sdk.buildtools.winapp\0.
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 function Ui { $r = & $cli ui @args; if ($LASTEXITCODE) { throw "WinApp failed: $args`n$r" }; return $r }
 function Windows { return (Ui list-windows -a $AppPid --json | ConvertFrom-Json) }
-function Note { return (Windows | Where-Object title -eq 'Noot' | Select-Object -Last 1).hwnd }
-$main = (Windows | Where-Object title -eq 'Noot — isolated FX lab').hwnd
+function Note { return (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd }
+$main = (Windows | Where-Object title -eq 'Scrunch — isolated FX lab').hwnd
 if (!$main) { throw 'Expected an isolated FX lab' }
 function Wait-Overlay {
     for ($i=0; $i -lt 40; $i++) {

@@ -1,9 +1,11 @@
-# Noot — Product Brief
+# Scrunch — Product Brief
+
+Historical concept brief; see README for the implemented product and current scope.
 
 **Status:** Concept / V0  
 **Platform:** Windows  
 **Type:** Free native desktop utility  
-**Working title:** Sticky
+**Product name:** Scrunch
 
 ## One-line idea
 
