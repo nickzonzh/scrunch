@@ -32,6 +32,7 @@
     <Content Include="Assets\AppIcon.ico" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\Fonts\*.ttf" />
+    <Content Include="Assets\Fonts\*.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\ShadowPaper.png" />
     <Content Include="Assets\GrainTile.png" />
     <Content Include="Assets\NootFX\**" CopyToOutputDirectory="PreserveNewest" />

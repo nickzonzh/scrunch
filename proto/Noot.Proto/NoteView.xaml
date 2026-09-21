@@ -18,7 +18,7 @@
        <Grid.RowDefinitions><RowDefinition Height="30"/><RowDefinition Height="*"/></Grid.RowDefinitions>
        <Border x:Name="GrabZone" Background="#06000000" ToolTipService.ToolTip="Pick up the top edge"/>
        <TextBox x:Name="NoteText" Grid.Row="1" Padding="20,4,20,18" AcceptsReturn="True" TextWrapping="Wrap" Background="Transparent"
-        BorderThickness="0" FontFamily="/Assets/Fonts/Caveat-Variable.ttf#Caveat" FontSize="25" Foreground="#453D2D" SelectionHighlightColor="#50BDA246"
+        BorderThickness="0" FontFamily="{StaticResource NoteFontFamily}" FontSize="23" Foreground="#453D2D" SelectionHighlightColor="#50BDA246"
         PlaceholderText="A little thing to remember…" IsSpellCheckEnabled="False" AutomationProperties.Name="Note text"
         Text="Leave me where&#x0a;I matter.&#x0a;&#x0a;Pick up my top edge.&#x0a;Put me somewhere good.">
         <TextBox.Resources>

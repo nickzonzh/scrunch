@@ -59,12 +59,16 @@ public partial class App : Application
                     : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Noot");
 #if DEBUG
                 // Repeatable native UI/restart checks without touching everyday notes.
-                if (arguments.Contains("--shell-preview")) directory = System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-shell-preview");
+                if (arguments.Contains("--shell-preview")) directory = System.IO.Path.Combine(AppContext.BaseDirectory,
+                    arguments.Contains("--visual-fixture") ? "product-check-shell-visual" : "product-check-shell-preview");
 #endif
                 _window = new ProductWindow(new NoteStore(directory));
             }
             catch (Exception error)
             {
+#if DEBUG
+                System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "startup-error.txt"), error.ToString());
+#endif
                 MessageBox(IntPtr.Zero, "Scrunch could not open your notes. If Scrunch is already running, use its window or Ctrl + Alt + N. Otherwise check access to your local notes folder. Your saved files have not been replaced.\n\n" + error.Message, "Scrunch", 0x10);
                 Exit(); return;
             }

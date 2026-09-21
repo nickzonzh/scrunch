@@ -10,7 +10,11 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+            <FontFamily x:Key="ContentControlThemeFontFamily">/Assets/Fonts/InterVariable.ttf#Inter Variable, Segoe UI Variable Text, Segoe UI, Segoe UI Emoji</FontFamily>
+            <FontFamily x:Key="ShellFontFamily">/Assets/Fonts/InterVariable.ttf#Inter Variable, Segoe UI Variable Text, Segoe UI, Segoe UI Emoji</FontFamily>
+            <!-- Only the paper editor uses handwriting. WinUI/DirectWrite supplies
+                 script-aware system and emoji fallback for missing glyphs. -->
+            <FontFamily x:Key="NoteFontFamily">/Assets/Fonts/DrawablyPen.ttf#Drawably Pen, Segoe UI Variable Text, Segoe UI, Segoe UI Emoji</FontFamily>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

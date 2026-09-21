@@ -11,7 +11,7 @@ accounts or cloud services. Native deletion graphics use Vortice Direct3D 11.
 ```
 
 Use `-Build` to rebuild after closing this build. Requires .NET 9 and the Windows
-build tools. Executable: `proto/artifacts/scrunch-shell/Scrunch.exe`.
+build tools. Executable: `proto/artifacts/scrunch-compact/Scrunch.exe`.
 
 - **New note**, or **Ctrl+Alt+N** from anywhere while Scrunch is running. New notes
   focus the editor immediately; typing never waits for an animation.
@@ -36,11 +36,17 @@ build tools. Executable: `proto/artifacts/scrunch-shell/Scrunch.exe`.
   active notes return on next launch. Closing an individual note discards it
   recoverably. There is no tray icon or hidden background mode in this milestone.
 
-The home panel is a compact 420 × 540 DIP native utility with a scrolling note
-list, theme-aware controls and Mica where Windows supports it. Floating paper
+The home panel is a 400-DIP-wide native utility that fits its content (329 DIP
+high for three notes, plus a 32-DIP integrated caption), with a bounded scrolling
+note list and tuned native Desktop Acrylic
+Thin where Windows supports it. Inter Variable defines the shell and
+Drawably Pen defines paper content, with Windows script/emoji fallbacks. Floating paper
 notes remain the workspace. Playful paper, yellow and unpinned remain the initial
 defaults. A shortcut conflict is shown in the home panel and Settings; local
 creation still works. The global shortcut requires Scrunch to be running.
+
+See [shell typography, material and sizing](proto/SHELL-POLISH.md) for font notices,
+fallback architecture and native desktop verification details.
 
 ## Naming and compatibility
 
