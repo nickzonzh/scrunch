@@ -19,6 +19,7 @@ public sealed partial class ShellView : UserControl
     public event Action? QuitRequested;
     public event Action? DataFolderRequested;
     public event Action<NoteDefaults>? DefaultsChanged;
+    public event Action? FitRequested;
 
     public ShellView()
     {
@@ -49,6 +50,8 @@ public sealed partial class ShellView : UserControl
         _loadingDefaults = false;
         ShortcutLabel.Text = shortcutRegistered ? "Ctrl + Alt + N · New note while Scrunch is running"
             : "Ctrl + Alt + N is in use by another app. Use New note or Ctrl + N in Scrunch.";
+        ShortcutNotice.Visibility = shortcutRegistered ? Visibility.Collapsed : Visibility.Visible;
+        FitRequested?.Invoke();
     }
 
     public void UpdateNotes(IEnumerable<NoteRecord> notes)
@@ -73,27 +76,37 @@ public sealed partial class ShellView : UserControl
             if (row == null) _rows.Insert(i, new NoteListRow(matching[i]));
             else { if (_rows.IndexOf(row) != i) _rows.Move(_rows.IndexOf(row), i); row.Update(matching[i]); }
         }
-        CountLabel.Text = query.Length > 0 ? $"{matching.Length} of {active.Length} notes" : active.Length == 1 ? "1 note" : $"{active.Length} notes";
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(NotesList,
+            query.Length > 0 ? $"Notes, {matching.Length} of {active.Length} matching" : $"Notes, {active.Length}");
         EmptyLabel.Text = active.Length == 0 ? "A little thing to remember? Create a note." : "No matching notes. Try another search.";
         EmptyLabel.Visibility = matching.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         NotesList.Visibility = matching.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        FitRequested?.Invoke();
     }
 
     public void ShowHome()
     {
         SettingsPanel.Visibility = Visibility.Collapsed; HomePanel.Visibility = Visibility.Visible;
         SettingsButton.Focus(FocusState.Programmatic);
+        FitRequested?.Invoke();
     }
 
     private void New_Click(object sender, RoutedEventArgs e) => NewRequested?.Invoke();
     private void Undo_Click(object sender, RoutedEventArgs e) => UndoRequested?.Invoke();
     private void Quit_Click(object sender, RoutedEventArgs e) => QuitRequested?.Invoke();
     private void DataFolder_Click(object sender, RoutedEventArgs e) => DataFolderRequested?.Invoke();
+    private void DismissShortcutNotice_Click(object sender, RoutedEventArgs e)
+    {
+        ShortcutNotice.Visibility = Visibility.Collapsed;
+        SettingsButton.Focus(FocusState.Keyboard);
+        FitRequested?.Invoke();
+    }
     private void Back_Click(object sender, RoutedEventArgs e) => ShowHome();
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
         HomePanel.Visibility = Visibility.Collapsed; SettingsPanel.Visibility = Visibility.Visible;
         BackButton.Focus(FocusState.Programmatic);
+        FitRequested?.Invoke();
     }
     private void Search_Changed(object sender, TextChangedEventArgs e) => FilterNotes();
     private void Note_Click(object sender, ItemClickEventArgs e) => NoteRequested?.Invoke(((NoteListRow)e.ClickedItem).Id);

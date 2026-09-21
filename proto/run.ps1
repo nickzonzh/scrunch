@@ -1,6 +1,6 @@
 param([switch]$Build, [switch]$Verify, [switch]$Bench, [switch]$VerifyProduct, [switch]$VerifyFx, [switch]$FxLab, [switch]$ShellPreview)
 $ErrorActionPreference = 'Stop'
-$scrunchOutput = Join-Path $PSScriptRoot 'artifacts/scrunch-shell'
+$scrunchOutput = Join-Path $PSScriptRoot 'artifacts/scrunch-compact'
 $scrunchExecutable = Join-Path $scrunchOutput 'Scrunch.exe'
 if ($Build -or !(Test-Path -LiteralPath $scrunchExecutable)) {
     $runningScrunch = Get-Process -Name Scrunch -ErrorAction SilentlyContinue |

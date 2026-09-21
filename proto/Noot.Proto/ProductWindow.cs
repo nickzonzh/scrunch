@@ -18,14 +18,23 @@ public sealed partial class ProductWindow : Window
     private readonly NewNoteHotkey _hotkey;
     private bool _quitting;
     private bool _dirty;
+    private bool _fitQueued;
+    private readonly Grid _caption = new() { Height = 32, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+    private readonly Windows.UI.ViewManagement.AccessibilitySettings _accessibility = new();
 
     public ProductWindow(NoteStore store)
     {
         _store = store;
         Title = "Scrunch";
-        SystemBackdrop = new MicaBackdrop();
+        SystemBackdrop = new ShellBackdrop
+        {
+#if DEBUG
+            ForceFallbackForCheck = Environment.GetCommandLineArgs().Contains("--shell-preview") &&
+                Environment.GetCommandLineArgs().Contains("--solid-backdrop")
+#endif
+        };
         double scale = GetDpiForWindow(WindowNative.GetWindowHandle(this)) / 96.0;
-        AppWindow.ResizeClient(new SizeInt32((int)(420 * scale), (int)(540 * scale)));
+        AppWindow.ResizeClient(new SizeInt32((int)(400 * scale), (int)(240 * scale)));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
         { presenter.IsMaximizable = false; presenter.IsResizable = false; }
         _shell.NewRequested += () => CreateNote();
@@ -35,14 +44,52 @@ public sealed partial class ProductWindow : Window
         _shell.DefaultsChanged += defaults => { _store.Document.Defaults = defaults; ScheduleSave(); };
         _shell.DataFolderRequested += OpenDataFolder;
         var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.Children.Add(_caption);
+        Grid.SetRow(_shell, 1);
         root.Children.Add(_shell);
-        Grid.SetRow(_notice, 1); root.Children.Add(_notice);
+        Grid.SetRow(_notice, 2); root.Children.Add(_notice);
         Content = root;
+        // Extend the same backdrop under the system caption buttons. The empty
+        // strip is solely a native drag/system-menu region; no duplicate brand.
+        if (Microsoft.UI.Windowing.AppWindowTitleBar.IsCustomizationSupported())
+        {
+            ExtendsContentIntoTitleBar = true;
+            SetTitleBar(_caption);
+        }
+        else _caption.Visibility = Visibility.Collapsed;
+#if DEBUG
+        if (Environment.GetCommandLineArgs().Contains("--shell-preview"))
+            root.RequestedTheme = Environment.GetCommandLineArgs().Contains("--dark") ? ElementTheme.Dark : ElementTheme.Light;
+#endif
+        _shell.FitRequested += QueueFitShell;
+        root.Loaded += (_, _) => QueueFitShell();
+        root.ActualThemeChanged += (_, _) => QueueFitShell();
+        root.Loaded += (_, _) => UpdateShellFrame(root);
+        root.ActualThemeChanged += (_, _) => UpdateShellFrame(root);
+        ((ShellBackdrop)SystemBackdrop).ConfigurationChanged += () => UpdateShellFrame(root);
+#if DEBUG
+        if (Environment.GetCommandLineArgs().Contains("--shell-preview"))
+            Activated += async (_, _) =>
+            {
+                await Task.Delay(150);
+                if (!_quitting && SystemBackdrop is ShellBackdrop backdrop)
+                    File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "shell-backdrop.json"),
+                        System.Text.Json.JsonSerializer.Serialize(ShellDiagnostics,
+                            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            };
+#endif
+        _notice.SizeChanged += (_, _) => QueueFitShell();
+        AppWindow.Changed += (_, e) =>
+        {
+            if (e.DidPositionChange) { UpdateShellFrame(root); QueueFitShell(); }
+        };
 #if DEBUG
         if (Environment.GetCommandLineArgs().Contains("--fx-lab"))
         {
+            ExtendsContentIntoTitleBar = false;
             Title = "Scrunch — isolated FX lab";
             root.Children.Remove(_notice);
             var stack = new StackPanel { Spacing = 10, Padding = new Thickness(28) };
@@ -103,13 +150,86 @@ public sealed partial class ProductWindow : Window
         {
             if (!PrepareQuit()) e.Cancel = true;
         };
-        Closed += (_, _) => { NootFX.NootFxService.Shared.Dispose(); _hotkey.Dispose(); _store.Dispose(); Application.Current.Exit(); };
+        Closed += (_, _) =>
+        {
+            NootFX.NootFxService.Shared.Dispose(); _hotkey.Dispose(); _store.Dispose(); Application.Current.Exit();
+        };
         ((FrameworkElement)Content).Loaded += OnLoaded;
         RefreshCount();
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    private void UpdateShellFrame(FrameworkElement root)
+    {
+        var handle = WindowNative.GetWindowHandle(this);
+        // Keep native buttons, shadow and border; DWM owns window behaviour.
+        int dark = root.ActualTheme == ElementTheme.Dark ? 1 : 0;
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 18985))
+            DwmSetWindowAttribute(handle, 20, ref dark, sizeof(int));
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            int smallRound = 3; // DWMWCP_ROUNDSMALL
+            DwmSetWindowAttribute(handle, 33, ref smallRound, sizeof(int));
+        }
+        if (!ExtendsContentIntoTitleBar) return;
+        var caption = AppWindow.TitleBar;
+        double scale = GetDpiForWindow(handle) / 96.0;
+        _caption.Height = Math.Max(32, caption.Height / scale);
+        if (_accessibility.HighContrast)
+        {
+            // Let Windows supply all caption colours in a contrast theme.
+            caption.ButtonBackgroundColor = caption.ButtonInactiveBackgroundColor = null;
+            caption.ButtonForegroundColor = caption.ButtonInactiveForegroundColor = null;
+            caption.ButtonHoverBackgroundColor = caption.ButtonHoverForegroundColor = null;
+            caption.ButtonPressedBackgroundColor = caption.ButtonPressedForegroundColor = null;
+            return;
+        }
+        caption.ButtonBackgroundColor = caption.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
+        caption.ButtonForegroundColor = dark == 1 ? Microsoft.UI.Colors.White : Windows.UI.Color.FromArgb(255, 32, 32, 32);
+        caption.ButtonInactiveForegroundColor = dark == 1 ? Windows.UI.Color.FromArgb(255, 160, 160, 160) : Windows.UI.Color.FromArgb(255, 100, 100, 100);
+        caption.ButtonHoverForegroundColor = caption.ButtonPressedForegroundColor = caption.ButtonForegroundColor;
+        caption.ButtonHoverBackgroundColor = dark == 1 ? Windows.UI.Color.FromArgb(24, 255, 255, 255) : Windows.UI.Color.FromArgb(16, 0, 0, 0);
+        caption.ButtonPressedBackgroundColor = dark == 1 ? Windows.UI.Color.FromArgb(16, 255, 255, 255) : Windows.UI.Color.FromArgb(24, 0, 0, 0);
+    }
+
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+
+    private void QueueFitShell()
+    {
+        if (_fitQueued || _quitting || Content is not Grid) return;
+        _fitQueued = true;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _fitQueued = false;
+            if (_quitting || Content is not Grid root || !root.IsLoaded) return;
+            // Measure unconstrained height, with the list/settings caps in XAML.
+            // Never derive the next height from the current window's stretched rows.
+            root.InvalidateMeasure();
+            root.Measure(new Windows.Foundation.Size(400, double.PositiveInfinity));
+            double dpiScale = GetDpiForWindow(WindowNative.GetWindowHandle(this)) / 96.0;
+            var work = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(AppWindow.Id,
+                Microsoft.UI.Windowing.DisplayAreaFallback.Primary).WorkArea;
+            double maxHeight = Math.Min(560, Math.Max(180, work.Height / dpiScale - 64));
+            var desired = new SizeInt32((int)Math.Round(400 * dpiScale),
+                (int)Math.Ceiling(Math.Clamp(root.DesiredSize.Height, Math.Min(220, maxHeight), maxHeight) * dpiScale));
+            if (ExtendsContentIntoTitleBar)
+            {
+                // ResizeClient counts the old non-client caption on Windows 10,
+                // even though XAML now draws there. Size the rendered root plus
+                // the measured native frame so the caption is counted only once.
+                // XamlRoot.Size is the host viewport; ActualHeight can still be
+                // the previous arrange size while a list/theme change settles.
+                var frameWidth = AppWindow.Size.Width - (int)Math.Round(root.XamlRoot.Size.Width * dpiScale);
+                var frameHeight = AppWindow.Size.Height - (int)Math.Round(root.XamlRoot.Size.Height * dpiScale);
+                var outer = new SizeInt32(desired.Width + frameWidth, desired.Height + frameHeight);
+                if (AppWindow.Size != outer) AppWindow.Resize(outer);
+            }
+            else if (AppWindow.ClientSize != desired) AppWindow.ResizeClient(desired);
+        });
+    }
 
     private void ActivateNote(Guid id)
     {
@@ -143,13 +263,36 @@ public sealed partial class ProductWindow : Window
         await Task.Yield();
         foreach (var record in _store.Document.Notes.Where(n => n.DeletedAt == null).ToArray()) Open(record, false);
         if (_store.RecoveryMessage != null) Notice(_store.RecoveryMessage, InfoBarSeverity.Warning);
-        if (!_hotkey.Registered && _store.RecoveryMessage == null)
+        // The everyday shell reports shortcut conflicts in its compact inline
+        // notice; preserve the lab's existing notice when the shell is absent.
+        if (!_hotkey.Registered && _store.RecoveryMessage == null && Content is not Grid)
             Notice("Ctrl + Alt + N is in use. New note and Ctrl + N still work in Scrunch.", InfoBarSeverity.Warning);
         if (Environment.GetCommandLineArgs().Contains("--verify-product")) await VerifyAsync();
 #if DEBUG
         if (Environment.GetCommandLineArgs().Contains("--verify-fx")) await VerifyFxAsync();
+        if (Environment.GetCommandLineArgs().Contains("--shell-preview"))
+        {
+            await Task.Delay(600);
+            File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "shell-backdrop.json"),
+                System.Text.Json.JsonSerializer.Serialize(ShellDiagnostics,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        }
 #endif
     }
+
+#if DEBUG
+    private object ShellDiagnostics => new
+    {
+        backdrop = ((ShellBackdrop)SystemBackdrop).Diagnostics,
+        extendedCaption = ExtendsContentIntoTitleBar,
+        captionHeight = _caption.ActualHeight,
+        shellHeight = _shell.ActualHeight,
+        rootHeight = ((FrameworkElement)Content).ActualHeight,
+        outerHeight = AppWindow.Size.Height,
+        clientHeight = AppWindow.ClientSize.Height,
+        shortcutRegistered = _hotkey.Registered
+    };
+#endif
 
     public NoteWindow? CreateNote()
     {

@@ -1,8 +1,175 @@
 # Verification
 
+## Small shell refinements after feedback, 21 September 2026
+
+- Shortcut conflict: neutral two-line inline notice, 12-DIP icon and 24-DIP
+  dismiss button. Adds **38 DIP rather than 68 DIP**; dismissal removes its space
+  and returns keyboard focus to Settings. Save/recovery InfoBars are unchanged.
+- Search fill opacity reduced approximately 10% across rest, hover and focus.
+  Native focus underline and high-contrast fills remain intact.
+- Footer divider opacity halved, with full-opacity high-contrast fallback.
+- Default Debug build: **zero warnings/errors; 45 native product checks passed**.
+  Added checks cover compact shortcut presentation and dismissal/height recovery.
+  Existing checks still cover all note flows, settings, storage integration,
+  live theme changes, caption sizing and list scrolling.
+- Inspected updated native desktop captures in light theme over the bright beach
+  wallpaper and dark theme over the dark floral wallpaper. Evidence:
+  `artifacts/scrunch-compact/detail-verification/light.png` and `dark.png`.
+  Earlier six-case material matrix below remains evidence for the unchanged
+  Acrylic/title-bar treatment; it predates these three small refinements.
+
+## Final shell tidy-up, 21 September 2026
+
+Default build remains `artifacts/scrunch-compact/Scrunch.exe` (`run.ps1`).
+This section supersedes the earlier desktop-capture limitation below.
+
+- Final Debug x64 build: **zero warnings and errors**.
+- **43 native product checks passed**, with a fresh report at 21:02 local time
+  in `artifacts/scrunch-compact/product-verification.json`. The three-note body
+  measures **400 x 329 DIP**, plus a 32-DIP integrated caption. New checks ensure
+  the caption is counted once and its drag region does not overlap shell actions.
+  The long list stays bounded and scrolls; returning to three notes shrinks it.
+- The same run covers native New note, Search, row activation, Undo, Settings,
+  Back, Quit, editor/storage Unicode round trips, defaults, autosave, placement,
+  recoverable discard, interruption/Undo and animated menu discard (50 frames).
+  Captures now switch the whole window theme, exercising backdrop and caption
+  updates rather than only the inner shell's text colours.
+- **16 storage checks passed**. Fresh evidence:
+  `%TEMP%/noot-storage-check-f489efdd49b4428aa818d3120c074ceb`.
+- Live UIA search `ANNUAL` found the dentist note through its body text. Native
+  Ctrl+F focus retained the blue accent underline. The native system menu exposed
+  Move, Minimize and Close, with Size/Maximize disabled; Alt+F4 saved and closed
+  each preview. Physical mouse dragging/caption clicking was not asserted.
+- Real desktop screenshots were inspected for **light/dark app theme x bright
+  beach/dark floral wallpaper images**, plus both forced solid fallbacks. The
+  images were displayed in a temporary Windows review window, not installed as
+  the user's wallpaper. Acrylic remained readable, visibly frosted and continuous
+  through the caption. Search, rows and footer remained legible in all six cases.
+- Runtime diagnostics report Thin Acrylic `Active`, light tint/luminosity
+  **0.12 / 0.72**, dark **0.18 / 0.78**. Explicit solid cases report
+  `Forced solid fallback`, #FFF3F3F3 / #FF202020.
+
+### Evidence and limitations
+
+Desktop images and per-case diagnostic JSON live in
+`artifacts/scrunch-compact/tidy-verification/`: `light-bright.png`, `light-dark.png`,
+`dark-bright.png`, `dark-dark.png`, `light-solid-fallback.png`,
+`dark-solid-fallback.png`. `search-focused.png` shows live search/focus;
+`dark-wallpaper-context.png` shows the temporary wallpaper surface;
+`before-native.png` records the old caption/material. The generated XAML captures
+beside the executable cover empty, populated, long-list, settings, search-empty
+and Drawably notes; those XAML captures still do not contain Acrylic or captions.
+
+The earlier blank-client symptom was a capture-session limitation. Interactive
+desktop screen capture succeeds outside the command sandbox. Computer Use's WGC
+path still errors with `SetIsBorderRequired ... 0x80004002`, so its UIA inspection
+was paired with the screenshot skill's working desktop-pixel capture.
+
+During refinement, a direct `AccessibilitySettings.HighContrastChanged`
+subscription failed on this unpackaged host; caption updates now share WinUI's
+backdrop-configuration notification. Calling that notification's base method also
+failed on a live root-theme transition and was removed, matching the custom
+notification pattern. Viewport-based sizing avoids both doubled caption height
+and stale element layout when the list grows. Final checks pass after these fixes.
+
+An older `nootfx-material-checked/Noot.Proto.exe` remains running. A real global
+shortcut conflict was visible and retained in screenshots; local creation worked.
+Windows 11, mixed DPI, physical caption gestures and actual OS high-contrast,
+transparency and power-policy toggles remain unverified. Per-window theme and
+forced fallback checks do not claim that coverage. Sticky-note visuals, NootFX,
+storage schema, IA and flows were not redesigned. No tray or packaging work.
+
+## Compact shell and typography, 21 September 2026
+
+Historical results before the final tidy-up (same output path, subsequently rebuilt).
+Build: `artifacts/scrunch-compact/Scrunch.exe` (`run.ps1`).
+Implementation details, font provenance and exact material values are in
+[SHELL-POLISH.md](SHELL-POLISH.md). **Desktop visual acceptance remains open.**
+
+- Final Debug x64 build: zero warnings and errors. Font binaries and their
+  Inter OFL / Drawably MIT notices are present in the output.
+- **41 native product checks passed**, including native button/list providers,
+  New note, Search, row activation, Settings, Back, Undo and Quit; autosave,
+  saved defaults, placement, discard/undo races, and animated menu discard.
+  New checks cover 400 × 335 DIP at three notes, capped/scrolling 30-note lists,
+  shrinking back to content, three Drawably note sizes, mixed-script/emoji text
+  preservation, JSON round trip and long-content scrolling in the small editor.
+- **16 storage checks passed**. Evidence directory:
+  `%TEMP%/noot-storage-check-2735db131b6f4dd59da8c1b099753965`.
+- **25 native paper-renderer checks passed**, including cached texture refresh,
+  interruption, reduced motion and return to idle. The bench exited after writing
+  `artifacts/scrunch-compact/verification.json`.
+- **62 NootFX lifecycle checks passed** with the new font. The two measured
+  1.2-second idle samples (cold and 13-note) both recorded 0 ms process CPU;
+  the 13-note sample created no additional FX device or FX frames. The final
+  idle check had no FX frame callbacks. These short checks are not a long-session
+  CPU/GPU performance claim. NootFX and physical paper implementation are unchanged.
+- Native desktop matrix: six cases launched and exited through Quit, with UIA
+  controls present. Light/dark RequestedTheme × bright/dark real GDI backgrounds
+  reported Acrylic `Active`; explicit solid fallbacks reported #FFF3F3F3 and
+  #FF202020. Native dark caption styling is visible in the dark captures.
+  Initial fallback testing exposed a missing system dispatcher queue; the fixed
+  implementation passed both fallback launches. The earlier `startup-error.txt`
+  in the build directory is retained as historical diagnostic evidence.
+
+### Captures actually inspected
+
+Native XAML pixels in `artifacts/scrunch-compact/`:
+
+- `shell-empty.png`, `shell-notes.png`, `shell-notes-dark.png`
+- `shell-long-list.png`, `shell-search-empty.png`
+- `shell-settings.png`, `shell-settings-bottom.png`
+- `note-typography-240x240.png`, `note-typography-300x320.png`,
+  `note-typography-440x420.png`, `note-typography-small-scrolled.png`
+
+These confirm the compact hierarchy, Inter rendering, quiet Undo/footer and
+readable Drawably handwriting with script/colour-emoji fallback. The shell
+captures have explicit neutral backgrounds: **they do not show Acrylic**.
+
+Native screen pixels and UIA trees are saved in
+`artifacts/scrunch-compact/desktop-verification/` (also under
+`%TEMP%/scrunch-shell-desktop/`): `light-bright.png`, `light-dark.png`,
+`dark-bright.png`, `dark-dark.png`, `light-solid-fallback.png`,
+`dark-solid-fallback.png`, and `desktop-matrix.json`. `before-native.png` records
+the old build's same blank-client symptom. All six matrix images were inspected:
+the native client surfaces are blank, so visible Acrylic/desktop legibility and
+the note/shell contrast on the actual desktop **have not passed acceptance**.
+
+This is a Windows 10 19045 / NVIDIA RTX 3060 Ti host. The live controls and XAML
+captures work, but both the original and changed builds fail this native visual
+check. No capture success, controller `Active` state, or passing build is treated
+as visible-material proof. Windows 11, OS-wide theme/contrast/transparency toggles,
+continuous physical dragging/resizing and mixed-DPI testing remain outstanding.
+The matrix uses per-window themes and temporary background windows; it restores
+the desktop by closing them and does not change Windows preferences or wallpaper.
+
+Follow-up isolation reproduced the blank native capture in two minimal probes:
+the current SDK 1.8 with a blue Grid/system-font TextBlock and no Scrunch surface,
+and an independent app built against cached SDK 2.4.0. The first reports
+`Host visible: True; Scale: 1; Size: 444x201; Opacity: 1`. The independent app
+exposes its TextBlock in UIA and has no window capture-exclusion policy. Both
+probes were closed. Captures are `desktop-verification/minimal-sdk18.png` and
+`independent-sdk24.png`; the independent source is retained only under ignored
+`artifacts/presentation-probe-source/`. Temporary diagnostic code was removed
+from App.xaml.cs. Scrunch's SDK version is unchanged. A working native display/
+capture session or direct user observation is needed before further glass tuning.
+
+### Reproduce
+
+```powershell
+.\proto\run.ps1 -Build -VerifyProduct
+.\proto\run.ps1 -VerifyFx
+.\proto\verify-shell-ui.ps1
+dotnet run --project proto/Noot.StorageChecks/Noot.StorageChecks.csproj
+```
+
+The matrix uses only `product-check-shell-visual`; ordinary notes and interactive
+`product-check-shell-preview` data are kept separate. The existing icon remains;
+the next small branding task is a dedicated simple paper mark.
+
 ## Scrunch product shell, 21 September 2026
 
-Current default: `artifacts/scrunch-shell/Scrunch.exe`, via `run.ps1`.
+Historical build: `artifacts/scrunch-shell/Scrunch.exe`.
 All sections after this milestone are historical evidence for their named builds.
 The pre-existing NootFX work was checkpointed separately as `bd4a409` before
 shell implementation began.
