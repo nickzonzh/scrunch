@@ -1,4 +1,4 @@
-# Noot
+# Scrunch
 
 Beautiful little reminders that stay where you put them. C# / WinUI 3 / Windows
 Composition, with native text editing and tactile paper. No browser runtime,
@@ -11,26 +11,51 @@ accounts or cloud services. Native deletion graphics use Vortice Direct3D 11.
 ```
 
 Use `-Build` to rebuild after closing this build. Requires .NET 9 and the Windows
-build tools. Executable: `proto/artifacts/nootfx-variation-final/Noot.Proto.exe`.
+build tools. Executable: `proto/artifacts/scrunch-shell/Scrunch.exe`.
 
-- **New note**, or **Ctrl+Alt+N** from anywhere while Noot is running. New notes
+- **New note**, or **Ctrl+Alt+N** from anywhere while Scrunch is running. New notes
   focus the editor immediately; typing never waits for an animation.
 - Drag the top edge; resize with the lower-right corner.
 - Right-click the top edge for six paper colours, three motion personalities,
   reduced motion, optional always-on-top, and discard.
 - **Ctrl+N** creates another note from a note. **Ctrl+Shift+Delete** discards it.
-  **Ctrl+Shift+Z**, or **Undo last discard** in Noot, restores the latest discard.
+  **Ctrl+Shift+Z**, or **Undo last discard** in Scrunch, restores the latest discard.
   Ordinary Ctrl+Z stays available for undoing text edits.
 - Discard from the top-edge menu for a quick crumple-and-throw. Keyboard discard
   and reduced motion stay immediate. Undo can interrupt the effect. The note is
   saved as recoverable before any animation begins.
-- Minimise the Noot window while working. **Show notes** brings your notes forward.
-  Closing the Noot control window saves and quits; notes return on next launch.
-  Closing an individual note discards it recoverably.
+- Search the home panel by any text in a note; select a row to bring its native
+  window forward. **Ctrl+F** focuses search; **Escape** clears it. **Ctrl+N** also
+  works in the home panel. Rows stay in newest-created order as you edit.
+- **Settings** opens a separate native view for new-note colour, always-on-top
+  and reduced-motion defaults. Existing notes retain their individual settings.
+  Windows' animation preference is still respected. Settings also shows shortcut
+  availability, version, and **Open data folder**.
+- Minimise the Scrunch home window while working. **Open Scrunch** in any note's
+  top-edge menu restores it. **Quit**, or closing the home window, saves and exits;
+  active notes return on next launch. Closing an individual note discards it
+  recoverably. There is no tray icon or hidden background mode in this milestone.
 
-Playful paper is the default. Notes are unpinned by default. A shortcut conflict
-is shown in the control window; the New note button and local shortcut still work.
-The global shortcut requires Noot to be running.
+The home panel is a compact 420 × 540 DIP native utility with a scrolling note
+list, theme-aware controls and Mica where Windows supports it. Floating paper
+notes remain the workspace. Playful paper, yellow and unpinned remain the initial
+defaults. A shortcut conflict is shown in the home panel and Settings; local
+creation still works. The global shortcut requires Scrunch to be running.
+
+## Naming and compatibility
+
+Product UI, window titles, executable (`Scrunch.exe`), assembly metadata and
+manifest display names now use **Scrunch**. The checkout folder, source project
+`proto/Noot.Proto/Noot.Proto.csproj`, `Noot_Proto` namespace, check-project names
+and internal **NootFX** subsystem/assets deliberately retain their technical
+names. This avoids churn in compiled XAML, graphics assets and existing tools.
+Package identity and icons are unchanged; a branded icon is a later task.
+
+Saved notes deliberately remain in `%LOCALAPPDATA%\Noot`. No files are moved,
+so existing notes, recovery backups and the exclusive writer lock still work.
+Optional new-note defaults are stored in the same version-1 document; files from
+before this milestone load with the original defaults. Historical verification
+sections retain their original build paths and product names as evidence.
 
 ## Saving and recovery
 
@@ -54,7 +79,7 @@ the paper remains reachable. Full mixed-DPI and monitor docking tests are pendin
 ## Native NootFX deletion slice
 
 Floating notes now use a shared, lazy D3D11 renderer for animated menu discard:
-the actual XAML note is captured, one of three Noot-owned prepared paper bakes
+the actual XAML note is captured, one of three Scrunch-owned prepared paper bakes
 deforms it on the GPU, and a restrained throw finishes the discard. Corner Crush,
 Side Scrunch and Centre Collapse have distinct fold trajectories. An explicit
 seed selects geometry-only reflections, timing and release variation. Note text
@@ -62,7 +87,7 @@ is never mirrored. Normal editing and the existing
 pickup/peel renderer remain native WinUI. Keyboard discard and reduced motion
 remain immediate. Graphics failures fall back to the saved, recoverable discard.
 Filtered fold shadows, 4x edge smoothing and a single fade of the assembled paper
-keep the crumple readable. Playback takes 722â€“798ms: gather, brief hold, then throw.
+keep the crumple readable. Playback takes 722–798ms: gather, brief hold, then throw.
 
 ```powershell
 .\proto\run.ps1 -Build -FxLab     # DEBUG-only, isolated notes, slow/scrub controls
@@ -124,7 +149,9 @@ dotnet run --project proto/Noot.GeometryChecks/Noot.GeometryChecks.csproj
 
 Product verification uses a unique `product-check-*` data folder beside the
 executable, writes `product-verification.json`, and exits. It never opens your real
-notes. Paper verification writes `verification.json` and leaves the bench open for
+notes. For an isolated, restartable manual shell session, use `.\proto\run.ps1 -ShellPreview`
+(Debug only). Its data stays beside the executable in `product-check-shell-preview`.
+Paper verification writes `verification.json` and leaves the bench open for
 inspection. These are programmatic native integration checks, not mouse-gesture
 or screenshot assertions. See `proto/VERIFICATION.md` for evidence and limitations.
 
@@ -136,6 +163,7 @@ or screenshot assertions. See `proto/VERIFICATION.md` for evidence and limitatio
 - Transparent-padding pass-through and deformed-silhouette hit testing.
 - Verify the frameless popup treatment on Windows 11 and mixed-DPI monitors; the
   white outline is removed on the tested Windows 10 desktop.
-- Launch-at-startup option and a smaller background control surface.
+- Next product milestone: tray access and deliberate background/close behaviour,
+  followed by opt-in launch at sign-in. Keep the current small home panel.
 - Multi-monitor, DPI changes, sustained typing, long-session memory and frame-pacing
   measurements. No production memory budget or GPU-performance claim yet.

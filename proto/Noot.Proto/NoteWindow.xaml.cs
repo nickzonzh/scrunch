@@ -220,7 +220,7 @@ public sealed partial class NoteWindow : Window
             var undo = new MenuFlyoutItem { Text = "Undo last discard", KeyboardAcceleratorTextOverride = "Ctrl+Shift+Z" };
             OnClick(undo, (_, _) => UndoRequested?.Invoke(this, EventArgs.Empty));
             menu.Items.Add(undo);
-            var home = new MenuFlyoutItem { Text = "Open Noot" };
+            var home = new MenuFlyoutItem { Text = "Open Scrunch" };
             OnClick(home, (_, _) => HomeRequested?.Invoke(this, EventArgs.Empty));
             menu.Items.Add(home);
             menu.Items.Add(new MenuFlyoutSeparator());

@@ -5,9 +5,9 @@ $cli = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildto
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 function Ui { $r = & $cli ui @args; if ($LASTEXITCODE) { throw "WinApp failed: $args`n$r" }; return $r }
 function Windows { return (Ui list-windows -a $AppPid --json | ConvertFrom-Json) }
-function Note { return (Windows | Where-Object title -eq 'Noot' | Select-Object -Last 1).hwnd }
+function Note { return (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd }
 function Text([long]$hwnd) { return (Ui get-value NoteText -w $hwnd --json | ConvertFrom-Json).text }
-$main = (Windows | Where-Object title -eq 'Noot — isolated FX lab').hwnd
+$main = (Windows | Where-Object title -eq 'Scrunch — isolated FX lab').hwnd
 if (!$main -or (Note)) { throw 'Use a fresh isolated --fx-lab, with no existing test notes.' }
 $checks = [Collections.Generic.List[string]]::new()
 function Wait-Overlay {

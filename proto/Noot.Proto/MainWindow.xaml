@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:Noot_Proto"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Title="Noot — paper prototype"
+    Title="Scrunch — paper bench"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -18,7 +18,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar x:Name="AppTitleBar" Title="Noot — paper prototype">
+        <TitleBar x:Name="AppTitleBar" Title="Scrunch — paper bench">
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="Assets/AppIcon.ico" />
             </TitleBar.IconSource>

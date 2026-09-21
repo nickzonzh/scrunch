@@ -10,9 +10,9 @@ function Ui {
     return $result
 }
 function Windows { return (Ui list-windows -a $AppPid --json | ConvertFrom-Json) }
-$main = (Windows | Where-Object title -eq 'Noot — isolated FX lab').hwnd
+$main = (Windows | Where-Object title -eq 'Scrunch — isolated FX lab').hwnd
 if (!$main) { throw 'Launch a fresh DEBUG --fx-lab session. This script refuses everyday notes.' }
-if (Windows | Where-Object title -eq 'Noot') { throw 'Use a fresh FX lab with no existing test notes.' }
+if (Windows | Where-Object title -eq 'Scrunch note') { throw 'Use a fresh FX lab with no existing test notes.' }
 function Assert-Editor([long]$window, [string]$expected) {
     $actual = (Ui get-value NoteText -w $window --json | ConvertFrom-Json).text
     # Native TextBox TextPattern uses CR paragraph delimiters, while the input
@@ -21,7 +21,7 @@ function Assert-Editor([long]$window, [string]$expected) {
 }
 try {
     Ui invoke NewNote -w $main | Out-Null
-    $note = (Windows | Where-Object title -eq 'Noot' | Select-Object -Last 1).hwnd
+    $note = (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd
     $text = "NOOT FX / 21 SEPTEMBER`nActual native ink.`n`nRemember the green notebook."
     Ui set-value NoteText $text -w $note | Out-Null
     Assert-Editor $note $text
@@ -58,7 +58,7 @@ try {
     if (Windows | Where-Object title -eq 'NootFX paper') { throw 'FX overlay remains visible after completion' }
     $checks.Add('Normal-speed delete closes the real note and hides the overlay')
     Ui invoke 'Undo last discard' -w $main | Out-Null
-    $restored = (Windows | Where-Object title -eq 'Noot' | Select-Object -Last 1).hwnd
+    $restored = (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd
     Ui set-value NoteText 'Editing still works after NootFX.' -w $restored | Out-Null
     Assert-Editor $restored 'Editing still works after NootFX.'
     $checks.Add('Completed discard remains recoverable; normal editing works afterward')
@@ -70,7 +70,7 @@ try {
     if ((Windows | Where-Object hwnd -eq $restored) -or (Windows | Where-Object title -eq 'NootFX paper')) { throw 'Keyboard discard did not close immediately' }
     $checks.Add('Ctrl+Shift+Delete from the focused native editor closes without an FX overlay')
     Ui invoke 'Undo last discard' -w $main | Out-Null
-    $restored = (Windows | Where-Object title -eq 'Noot' | Select-Object -Last 1).hwnd
+    $restored = (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd
     Assert-Editor $restored 'Editing still works after NootFX.'
     $checks.Add('Keyboard discard is recoverable with the exact text')
     Ui screenshot -w $main --capture-screen -o (Join-Path $OutputDirectory '06-after.png') | Out-Null

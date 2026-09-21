@@ -14,6 +14,7 @@ using (var store = new NoteStore(directory))
     try { using var second = new NoteStore(directory); } catch (IOException) { locked = true; }
     Check(locked, "A second process cannot become a writer");
     store.Document.Notes.Add(new NoteRecord { Id = id, Text = "Milk 🥛\n日本語", X = -1000, Y = 220, Width = 340, Height = 240, Pinned = true, Colour = "mint", Feel = 0, ReducedMotion = true });
+    store.Document.Defaults = new NoteDefaults { Colour = "lavender", Pinned = true, ReducedMotion = true };
     store.Save();
     store.Document.Notes[0].Text += "\nA walk";
     store.Save();
@@ -22,6 +23,7 @@ using (var store = new NoteStore(directory))
 using (var store = new NoteStore(directory))
 {
     var note = store.Document.Notes.Single();
+    Check(store.Document.Defaults.Colour == "lavender" && store.Document.Defaults.Pinned && store.Document.Defaults.ReducedMotion, "New-note defaults survive restart alongside saved notes");
     Check(note.Id == id && note.Text == "Milk 🥛\n日本語\nA walk" && note.X == -1000 && note.Y == 220 && note.Width == 340 && note.Height == 240 && note.Pinned && note.Colour == "mint" && note.Feel == 0 && note.ReducedMotion, "Restart round-trip preserves text, geometry and preferences");
     note.DeletedAt = DateTimeOffset.UtcNow; store.Save();
 }
@@ -62,4 +64,14 @@ File.WriteAllText(Path.Combine(isolated, "notes.json"), "{}");
 bool incompleteRejected = false;
 try { using var store = new NoteStore(isolated); } catch (InvalidDataException) { incompleteRejected = true; }
 Check(incompleteRejected, "Missing schema fields cannot masquerade as an empty notebook");
+string legacy = Path.Combine(directory, "legacy");
+Directory.CreateDirectory(legacy);
+string legacyPath = Path.Combine(legacy, "notes.json");
+File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[]}");
+using (var store = new NoteStore(legacy))
+    Check(store.Document.Defaults.Colour == "yellow" && !store.Document.Defaults.Pinned && !store.Document.Defaults.ReducedMotion, "Existing Noot files without defaults retain the original new-note behaviour");
+File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[],\"Defaults\":null}");
+using (var store = new NoteStore(legacy)) Check(store.Document.Defaults.Colour == "yellow", "Null optional defaults do not strand saved notes");
+File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[],\"Defaults\":{\"Colour\":\"unknown\"}}");
+using (var store = new NoteStore(legacy)) Check(store.Document.Defaults.Colour == "yellow", "Unknown default colour safely falls back to yellow");
 Console.WriteLine($"{checks} storage checks passed. Evidence: {directory}");

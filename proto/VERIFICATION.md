@@ -1,5 +1,89 @@
 # Verification
 
+## Scrunch product shell, 21 September 2026
+
+Current default: `artifacts/scrunch-shell/Scrunch.exe`, via `run.ps1`.
+All sections after this milestone are historical evidence for their named builds.
+The pre-existing NootFX work was checkpointed separately as `bd4a409` before
+shell implementation began.
+
+### Implemented and checked
+
+- Debug x64 build: **zero warnings and errors**. NuGet restore required network
+  permission on this host; subsequent builds used `--no-restore`.
+- **32 native product checks passed** in `product-verification.json`. These use
+  actual WinUI controls and native automation providers: New note, Settings,
+  back navigation, scrolling Settings, persisted defaults, instant text search,
+  list-item invocation without duplicate windows, and shell Undo.
+- Preview updates handle the native editor's carriage-return line endings.
+  Active-note filtering, no-match results, colour, placement, autosave,
+  recoverable discard, Undo races and fresh-edit animated menu discard passed.
+  The final product run rendered **47 frames** for the real menu discard.
+- The final verification session invoked the actual shell **Quit** button via
+  its native provider and exited. Saved active notes were not marked discarded.
+- **16 storage checks passed**, including new defaults across reopen, legacy
+  version-1 files without defaults, null/unknown optional defaults, Unicode,
+  exclusive writer lock, backup recovery and failed-save preservation.
+- **62 native NootFX lifecycle checks passed** in `fx-verification.json`,
+  including repeated discard, undo/cancellation, 13-note idle, real display
+  capture, injected graphics failures, renderer recovery, reduced motion and
+  closed-note/view collection. The FX code and prepared assets were unchanged.
+- **25 native paper-renderer checks passed** in `verification.json`.
+  The comparison bench was closed after its report completed.
+- Headless geometry checks passed for 466,560 projected patches and 1,570,752
+  crumple patches. Deterministic FX checks passed, including 10,000 seeds.
+
+### Visual evidence and limits
+
+`-VerifyProduct` writes native WinUI RenderTargetBitmap captures beside the exe:
+
+- `shell-empty.png`
+- `shell-notes.png` and `shell-notes-dark.png` (three actual test notes)
+- `shell-search-empty.png`
+- `shell-settings.png` and `shell-settings-bottom.png`
+
+The populated light/dark home captures were visually inspected: compact header,
+quiet search, light list rows, colour indicators, and anchored Undo/Settings/Quit.
+Settings uses native controls and a scrollable body. These are rendered pixels
+from the running XAML tree, with an explicit neutral capture background. They do
+**not** validate native title-bar appearance, Mica or physical pointer gestures.
+The capture follows the documented [WinUI pixel-buffer API](https://learn.microsoft.com/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.media.imaging.rendertargetbitmap.getpixelsasync?view=windows-app-sdk-1.8).
+
+Computer Use read the actual accessibility tree, but Windows 10 capture returned
+`SetIsBorderRequired ... 0x80004002`, and pointer input returned `coordinate input
+geometry is unavailable`. Desktop screenshot fallbacks were occluded by other
+windows and are not visual evidence for Scrunch. Native provider invocation is
+reported separately from physical mouse/keyboard testing. The global shortcut
+was occupied by another running app; the conflict fallback was verified, not a
+new physical global-key delivery test.
+
+Windows 11 Mica, mixed-DPI shell sizing, screen-reader announcements, physical
+pointer feel and long-session resource budgets still need hands-on acceptance.
+No new graphics-quality or performance claim is made by this shell milestone.
+
+### Reproduce
+
+```powershell
+dotnet build proto/Noot.Proto/Noot.Proto.csproj -p:Platform=x64 -o proto/artifacts/scrunch-shell
+dotnet run --project proto/Noot.StorageChecks/Noot.StorageChecks.csproj
+dotnet run --project proto/Noot.GeometryChecks/Noot.GeometryChecks.csproj
+dotnet run --project proto/Noot.FxChecks/Noot.FxChecks.csproj
+.\proto\run.ps1 -VerifyProduct
+.\proto\run.ps1 -VerifyFx
+.\proto\run.ps1 -Verify
+.\proto\run.ps1 -ShellPreview
+```
+
+Run the UI checks sequentially and inspect each report's `passed` and `error`;
+`run.ps1` detaches after launch and its exit code alone does not prove a test pass.
+The ordinary product/FX tests use unique isolated folders. `-ShellPreview` is a
+Debug-only, restartable manual session using `product-check-shell-preview` beside
+the executable; it never opens everyday notes.
+
+Tray access, startup registration and a new app icon are deferred. Closing the
+home window still saves and quits. The next milestone should define tray access
+and background/close behaviour before adding opt-in sign-in startup.
+
 ## Paper motion polish, 8 September 2026
 
 Current executable: `artifacts/paper-polish-checked/Noot.Proto.exe`, selected by
