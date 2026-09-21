@@ -62,6 +62,17 @@ try {
     Ui set-value NoteText 'Editing still works after NootFX.' -w $restored | Out-Null
     Assert-Editor $restored 'Editing still works after NootFX.'
     $checks.Add('Completed discard remains recoverable; normal editing works afterward')
+    # A focused native TextBox can consume Delete before parent accelerators.
+    # Exercise actual key delivery, not a direct call to the discard method.
+    Ui click NoteText -w $restored | Out-Null
+    Ui send-keys 'ctrl+shift+delete' -w $restored --via send-input | Out-Null
+    Start-Sleep -Milliseconds 150
+    if ((Windows | Where-Object hwnd -eq $restored) -or (Windows | Where-Object title -eq 'NootFX paper')) { throw 'Keyboard discard did not close immediately' }
+    $checks.Add('Ctrl+Shift+Delete from the focused native editor closes without an FX overlay')
+    Ui invoke 'Undo last discard' -w $main | Out-Null
+    $restored = (Windows | Where-Object title -eq 'Noot' | Select-Object -Last 1).hwnd
+    Assert-Editor $restored 'Editing still works after NootFX.'
+    $checks.Add('Keyboard discard is recoverable with the exact text')
     Ui screenshot -w $main --capture-screen -o (Join-Path $OutputDirectory '06-after.png') | Out-Null
     @{ passed=$true; checks=$checks; computerUseVerified=$false; note='WinApp UI Automation only; inspect the screenshots separately.' } |
         ConvertTo-Json -Depth 4 | Set-Content (Join-Path $OutputDirectory 'ui-verification.json')

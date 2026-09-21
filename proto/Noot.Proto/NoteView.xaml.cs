@@ -61,6 +61,7 @@ public sealed partial class NoteView : UserControl
     private PaperRenderer? _renderer;
     private Visual? _visual;
     private bool _dragging, _resizing, _wired;
+    private bool _closed;
     private Point _press, _resizePress;
     private Vector3 _offset;
     private double _resizeW, _resizeH, _lastX;
@@ -79,7 +80,7 @@ public sealed partial class NoteView : UserControl
     public NoteView() => InitializeComponent();
     private async void NoteView_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_renderer != null) return;
+        if (_closed || _renderer != null) return;
         _visual = ElementCompositionPreview.GetElementVisual(TiltRoot);
         _renderer = new PaperRenderer(MeshHost, Paper) { Feel = PaperFeel.All[FeelIndex], PaperColour = PaperTokens.Colours[ColourKey] };
         _renderer.Resize((float)Paper.Width, (float)Paper.Height);
@@ -107,14 +108,28 @@ public sealed partial class NoteView : UserControl
             using var stream = File.OpenRead(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "ShadowPaper.png"));
             var bitmap = new BitmapImage();
             await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
-            RestShadowBrush.ImageSource = bitmap;
+            if (!_closed) RestShadowBrush.ImageSource = bitmap;
         }
         catch (Exception error) { Report($"Shadow texture unavailable: {error.Message}"); }
+        if (_closed) return;
         if (AnimateOnLoad && NoteText.FocusState == FocusState.Unfocused) await PrepareMotion(r => r.Peel());
         Report("Ready. Drag the top edge or click to write.");
     }
     private void AnimationsChanged(UISettings sender, object args) => DispatcherQueue.TryEnqueue(() => SetReducedMotion(ReducedMotion));
     private void NoteView_Unloaded(object sender, RoutedEventArgs e) => ReleaseGraphics();
+    // Window.Close does not guarantee Unloaded. This is terminal, unlike a
+    // temporary unload: sever callbacks into the owner and the native XAML tree.
+    internal void ReleaseForClose()
+    {
+        if (_closed) return;
+        _closed = true;
+        Loaded -= NoteView_Loaded; Unloaded -= NoteView_Unloaded;
+        CancelDiscard(); ReleaseGraphics();
+        Changed = null; WindowDragStarted = null; WindowDragDelta = null;
+        WindowDragEnded = null; ContentSizeChanged = null; StatusChanged = null;
+        ContextFlyout = null; RestShadowBrush.ImageSource = null;
+        _visual = null;
+    }
     internal void ReleaseGraphics()
     {
         _request++;

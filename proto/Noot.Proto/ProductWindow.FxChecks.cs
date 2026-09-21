@@ -18,7 +18,8 @@ public sealed partial class ProductWindow
             if (!uint.TryParse(seed.Text, out uint value)) { selected.Text = "Enter an integer from 0 to 4294967295"; return; }
             NootFxService.SeedOverride = value;
             var v = FxVariation.FromSeed(value);
-            selected.Text = $"{v.FamilyName} · {v.OrientationName}\n{DiscardMotion.DurationMs * v.DurationScale:F0}ms · throw {(v.Direction < 0 ? "left" : "right")}";
+            double duration = DiscardMotion.DurationMs * v.DurationScale;
+            selected.Text = $"{v.FamilyName} · {v.OrientationName}\n{duration:F0}ms · gather {duration * DiscardMotion.GatherEnd:F0} / hold {duration * v.Hold:F0} / exit {duration * (1 - DiscardMotion.GatherEnd - v.Hold):F0}ms\nthrow {(v.Direction < 0 ? "left" : "right")} · reach {v.Travel:P0} · rotation {v.Rotation * 180 / Math.PI:F0}°";
         }
         seed.TextChanged += (_, _) => Update(); Update();
         stack.Children.Add(seed); stack.Children.Add(selected);
@@ -31,6 +32,15 @@ public sealed partial class ProductWindow
             buttons.Children.Add(button);
         }
         stack.Children.Add(buttons);
+        var nextQa = new Microsoft.UI.Xaml.Controls.Button { Content = "Next QA seed" };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(nextQa, "FxNextQaSeed");
+        nextQa.Click += (_, _) =>
+        {
+            if (!uint.TryParse(seed.Text, out uint value)) return;
+            int index = Array.IndexOf(FxVariation.GoldenSeeds, value);
+            seed.Text = FxVariation.GoldenSeeds[(index + 1) % FxVariation.GoldenSeeds.Length].ToString();
+        };
+        stack.Children.Add(nextQa);
         var replay = new Microsoft.UI.Xaml.Controls.Button { Content = "Replay current seed" };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(replay, "FxReplay");
         replay.Click += async (_, _) =>
@@ -168,6 +178,7 @@ public sealed partial class ProductWindow
             // Warm up JIT/WinUI allocations, then sample three equal batches. Do
             // not force GC: this reflects the application's actual resource use.
             var closedNotes = new List<WeakReference<NoteWindow>>();
+            var closedViews = new List<WeakReference<NoteView>>();
             for (int i = 0; i < (retentionProbe ? 10 : 40); i++)
             {
                 NootFxService.SeedOverride = FxVariation.GoldenSeeds[i % FxVariation.GoldenSeeds.Length];
@@ -175,6 +186,7 @@ public sealed partial class ProductWindow
                 note = _windows[record.Id]; note.Discard(animate: true);
                 await Until(() => !_windows.ContainsKey(record.Id));
                 closedNotes.Add(new WeakReference<NoteWindow>(note));
+                closedViews.Add(note.ViewReferenceForCheck);
                 Check(note.LastDiscardOutcome == "Animated", $"Repeat {i + 1}: native effect completes");
                 if (i % 10 == 9)
                 {
@@ -182,10 +194,12 @@ public sealed partial class ProductWindow
                     // Separate managed/WinRT deferred collection from retained
                     // native allocations; never run GC in production playback.
                     GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
-                    await Task.Delay(250); samples.Add(new { stage = "after diagnostic full GC", iteration = i + 1, resources = Resources(i + 1), liveClosedNotes = closedNotes.Count(w => w.TryGetTarget(out _)) });
+                    await Task.Delay(250); samples.Add(new { stage = "after diagnostic full GC", iteration = i + 1, resources = Resources(i + 1),
+                        liveClosedNotes = closedNotes.Count(w => w.TryGetTarget(out _)), liveClosedViews = closedViews.Count(w => w.TryGetTarget(out _)) });
                 }
             }
-            Check(closedNotes.Count(w => w.TryGetTarget(out _)) <= 2, "Closed note windows are collectible after repeated deletion");
+            int retainedClosedNotes = closedNotes.Count(w => w.TryGetTarget(out _));
+            int retainedClosedViews = closedViews.Count(w => w.TryGetTarget(out _));
             // Faults are deliberate and remain separate from quality/perf data.
             foreach (string failure in new[] { "initialization", "asset", "render" })
             {
@@ -201,9 +215,19 @@ public sealed partial class ProductWindow
             note = _windows[record.Id]; note.Discard(animate: true);
             await Until(() => !_windows.ContainsKey(record.Id));
             Check(note.LastDiscardOutcome == "Animated", "Device and rendering recover after injected faults");
+            record.ReducedMotion = true;
+            UndoDiscard(); await Until(() => _windows.TryGetValue(record.Id, out var w) && w.EditorLoaded);
+            note = _windows[record.Id]; frameBefore = fx.TotalFrames;
+            note.Discard(animate: true);
+            Check(record.DeletedAt != null && !_windows.ContainsKey(record.Id) && note.LastDiscardFrames == 0 && fx.TotalFrames == frameBefore,
+                "Reduced-motion product discard saves and closes immediately without FX frames");
             frameBefore = fx.TotalFrames; await Task.Delay(1200);
             Check(fx.TotalFrames == frameBefore && !fx.Drawing && !fx.Active, "Final idle has no frame callbacks");
             samples.Add(Resources(41));
+            // Report retention after the independent fallback/recovery checks,
+            // so one failure does not suppress their evidence. Threshold unchanged.
+            Check(retainedClosedNotes <= 2, "Closed note windows are collectible after repeated deletion");
+            Check(retainedClosedViews <= 2, "Closed note visual trees are collectible after repeated deletion");
         }
         catch (Exception exception) { error = exception.ToString(); }
         finally { NootFxService.InjectFailure = null; NootFxService.SeedOverride = null; }

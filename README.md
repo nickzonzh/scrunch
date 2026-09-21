@@ -11,7 +11,7 @@ accounts or cloud services. Native deletion graphics use Vortice Direct3D 11.
 ```
 
 Use `-Build` to rebuild after closing this build. Requires .NET 9 and the Windows
-build tools. Executable: `proto/artifacts/nootfx-signature-checked/Noot.Proto.exe`.
+build tools. Executable: `proto/artifacts/nootfx-variation-final/Noot.Proto.exe`.
 
 - **New note**, or **Ctrl+Alt+N** from anywhere while Noot is running. New notes
   focus the editor immediately; typing never waits for an animation.
@@ -71,10 +71,13 @@ keep the crumple readable. Playback takes 722â€“798ms: gather, brief hold, 
 dotnet run --project proto/Noot.FxChecks/Noot.FxChecks.csproj
 ```
 
-The lab offers seed input, previous/next seed, selected family/orientation,
+The lab offers seed input, previous/next seed, next QA seed, selected family/orientation,
 exact replay, production speed, slow playback and held deformation. Its Delete
 latest test note command uses the ordinary saved-discard path. Hold deformation
 and the slider inspect the bake; uncheck Hold to finish.
+Matte fill keeps opposing folds lighter, while the main collapse has 19% more
+reading time without increasing total playback. The lab displays gather, hold
+and exit durations; the QA button cycles the fixed 18-seed suite.
 The hold automatically ends after 60 seconds. None of these controls appears in
 the everyday app or Release builds. See [NootFX implementation and verification](proto/NOOTFX.md)
 for architecture, provenance, measured results and outstanding verification.
