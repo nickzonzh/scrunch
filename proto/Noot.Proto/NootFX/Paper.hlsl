@@ -4,6 +4,8 @@ cbuffer Settings : register(b0) {
     float4 playback; // frame, vertex count, throw progress, alpha
     float4 paperColour;
     float4 origin; // paper centre x/y, deformation, reserved
+    float4 variation; // direction, travel, rotation, vertical departure
+    float4 orientation; // geometry signs x/y, square lattice side, reserved
 };
 StructuredBuffer<float4> bake : register(t0); // position, normal per point/frame
 StructuredBuffer<float2> uvTable : register(t1);
@@ -16,17 +18,22 @@ struct Vertex { float4 position : SV_POSITION; float2 uv : TEXCOORD0; float3 nor
 static const float3 light = normalize(float3(-.45,-.6,1));
 float3 throwOffset(float t) {
     // Scale with the captured physical paper, preserving motion at different DPI.
-    float reach=sqrt(viewport.z*viewport.w)*.28;
-    return float3(reach*t,reach*(-.38*t+.72*t*t),-reach*.7*t);
+    float reach=sqrt(viewport.z*viewport.w)*variation.y;
+    return float3(reach*t*variation.x,reach*(variation.w*t+.65*t*t),-reach*.7*t);
 }
 float3 rotate(float3 p, float t) {
-    float a=t*.62, b=t*.32;
+    float a=t*variation.z*variation.x, b=t*.24*variation.x;
     p.xy=float2(cos(a)*p.x-sin(a)*p.y,sin(a)*p.x+cos(a)*p.y);
     p.xz=float2(cos(b)*p.x+sin(b)*p.z,-sin(b)*p.x+cos(b)*p.z);
     return p;
 }
 void paperVertex(uint id, out float3 p, out float3 n) {
     uint f=(uint)playback.x, count=(uint)playback.y;
+    // Reflect the deformation FIELD and its vector, not the note UV. At rest
+    // F'(u,v)=M F(M(u,v)) returns the original, readable sheet exactly.
+    uint side=(uint)orientation.z, x=id%side, y=id/side;
+    x=orientation.x<0?side-1-x:x; y=orientation.y<0?side-1-y:y;
+    id=y*side+x;
     uint a=(f*count+id)*2, b=((f+1)*count+id)*2;
     float areaSize=sqrt(viewport.z*viewport.w);
     // Preserve the exact rectangular handoff, then gather the long axis more
@@ -35,6 +42,7 @@ void paperVertex(uint id, out float3 p, out float3 n) {
     float3 scale=float3(lerp(viewport.zw,areaSize.xx,gather),areaSize);
     p=lerp(bake[a].xyz,bake[b].xyz,frac(playback.x))*scale;
     n=normalize(lerp(bake[a+1].xyz,bake[b+1].xyz,frac(playback.x))/scale);
+    p.xy*=orientation.xy; n.xy*=orientation.xy;
     float t=playback.z;
     p=rotate(p,t); n=rotate(n,t);
     p+=throwOffset(t);
@@ -66,7 +74,9 @@ float4 PS(Vertex i, bool front : SV_IsFrontFace) : SV_TARGET {
     float3 n=normalize(i.normal);
     float3 facet=normalize(cross(ddx(i.world),ddy(i.world)));
     facet*=dot(facet,n)<0?-1:1;
-    n=normalize(lerp(n,facet,.22*origin.z));
+    // Retain broad panel lighting but let intersecting creases read crisply.
+    float crease=smoothstep(.015,.24,1-abs(dot(n,facet)));
+    n=normalize(lerp(n,facet,(.26+.30*crease)*origin.z));
     // Orient toward the eye for double-sided paper, keep the reverse unprinted.
     float facing=n.z; n*=facing<0?-1:1;
     float3 printed=note.Sample(linearClamp,i.uv).rgb;

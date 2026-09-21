@@ -1,31 +1,30 @@
-# Offline NootFX asset preparation
+# Offline NootFX paper authoring
 
-The native application ships only `crumple.nfx`, the licenses and provenance.
-Three.js is a **development-only parser** here; no JS, browser renderer, FBX,
-EXR, or heavyweight asset decoder enters the application.
+Run `node tools/nootfx-assets/author.mjs` from the repository root. No downloads,
+Houdini installation, npm install, Three.js, FBX or EXR decoder are required.
+`node tools/nootfx-assets/author.mjs --check` regenerates all outputs in memory and
+requires byte-for-byte equality, including provenance. Node 24.11.0 was used.
+Git attributes preserve LF for the generator/provenance, and source hashing
+normalizes CRLF so Windows checkout conventions do not invalidate the manifest.
 
-From this directory:
+Three hand-authored oblique hinge sequences guide an irregular 25x25 panel
+lattice. Offline edge-length projection resists stretched triangles; unequal
+closing pressure forms a compact wad. Centre Collapse also begins with an
+off-centre depression. No collision solver or runtime simulation is included.
+This is an artistic baked approximation, with residual strain and possible
+self-intersection; it is not advertised as a physically exact solve.
 
-```powershell
-./fetch.ps1
-npm.cmd ci --ignore-scripts
-node prepare.mjs
-```
+All families share 625 vertices, 1,152 triangles, 61 frames, UVs and indices.
+Reflection symmetry permits exact geometry-field mirroring without mirrored ink.
+Each file is 1,238,840 bytes; all three together are smaller than the old bake.
+The NFX1 binary layout is unchanged. `noot-provenance.json` records generator and
+output hashes, fold definitions, settings and final bounds.
 
-`fetch.ps1` pins upstream commit `f84648b001dd13becda7a629ab5398cecfe3a252`
-and checks the downloaded mesh and EXR hashes. The converter removes the dummy
-triangles, welds points by their VAT lookup ID, fixes source EXR row order and
-X displacement signs, trims static frames, maps XZ to a canonical UV-aligned
-paper plane, and computes area-weighted shared normals. It does no simulation.
+After any authoring change, run the asset checks, then the actual native lab at
+held stages **and production speed**, including mirrored seeds and wide/tall
+notes. Bounds and edge checks do not establish material quality. See
+[`proto/NOOTFX.md`](../../proto/NOOTFX.md) for the full seed and verification contract.
 
-Output: 3,500 vertices, 6,762 indexed triangles, 38 frames, 4,365,160 bytes.
-The header is `NFX1`, vertex count, frame count, index count (little-endian u32),
-followed by float2 UVs, u32 indices and frame-major float4 position/float4 normal
-pairs. Positions are normalized by the rest sheet dimensions; depth uses their
-geometric mean. The native vertex shader interpolates two adjacent frames and
-scales to the actual note aspect ratio.
-
-Source data and decoding conventions: [Paper Crumple by nagasawa / ITEM Inc.](https://github.com/item-develop/paper-crumple-demo), MIT.
-Required notice is shipped beside the prepared asset as `LICENSE.txt`.
-The dependency lockfile pins Three.js; npm's installed package includes its MIT
-license. All downloaded development files and `node_modules` are ignored.
+The borrowed Codrops conversion tooling and its Three.js dependency have been
+retired. Older source and attribution remain in Git history; these assets start
+from a new flat Noot sheet and do not reuse that geometry or motion.

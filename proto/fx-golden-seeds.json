@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 42, 99, 314, 1337, 9787, 4399],
+  "coverage": "0-11 cover all 3 families x 4 orientations. 9787/4399 cover near-minimum/maximum timing; left/right throws and short/long holds are included.",
+  "noteSizes": [[220,180], [440,180], [220,440], [440,440], [300,320]],
+  "heldDeformation": [0, 0.2, 0.4, 0.6, 0.8, 1]
+}

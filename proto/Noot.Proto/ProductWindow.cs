@@ -46,6 +46,11 @@ public sealed partial class ProductWindow : Window
         if (Environment.GetCommandLineArgs().Contains("--fx-lab"))
         {
             Title = "Noot — isolated FX lab";
+            stack.Children.Clear(); stack.Spacing = 10;
+            stack.Children.Add(new TextBlock { Text = "NootFX · discard lab", FontSize = 26 });
+            stack.Children.Add(new TextBlock { Text = "Isolated test notes · exact seed replay", Opacity = .7 });
+            stack.Children.Add(create); stack.Children.Add(actions); stack.Children.Add(_notice);
+            AddFxSeedControls(stack);
             var slow = new CheckBox { Content = "Slow NootFX (18 seconds)", IsChecked = true };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(slow, "FxSlow");
             NootFX.NootFxService.SlowPlayback = true;
@@ -60,6 +65,10 @@ public sealed partial class ProductWindow : Window
             hold.Unchecked += (_, _) => NootFX.NootFxService.HeldProgress = null;
             progress.ValueChanged += (_, _) => { if (hold.IsChecked == true) NootFX.NootFxService.HeldProgress = (float)progress.Value; };
             stack.Children.Add(hold); stack.Children.Add(progress);
+            var production = new Button { Content = "Production speed" };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(production, "FxProduction");
+            production.Click += (_, _) => { hold.IsChecked = false; slow.IsChecked = false; };
+            stack.Children.Add(production);
             var discard = new Button { Content = "Delete latest test note" };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(discard, "FxDelete");
             discard.Click += (_, _) => _windows.Values.LastOrDefault(w => !w.IsDiscarding)?.Discard(animate: true);
