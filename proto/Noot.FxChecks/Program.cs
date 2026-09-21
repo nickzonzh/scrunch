@@ -1,11 +1,11 @@
 using System.Numerics;
 using Noot_Proto.NootFX;
 
-string path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../Noot.Proto/Assets/NootFX/crumple.nfx"));
-if (!File.Exists(path)) path = Path.GetFullPath("proto/Noot.Proto/Assets/NootFX/crumple.nfx");
+string path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../Noot.Proto/Assets/NootFX/corner-crush.nfx"));
+if (!File.Exists(path)) path = Path.GetFullPath("proto/Noot.Proto/Assets/NootFX/corner-crush.nfx");
 var bake = new PaperBake(path);
 void Check(bool success, string label) { if (!success) throw new Exception(label); Console.WriteLine("PASS: " + label); }
-Check(bake.VertexCount == 3500 && bake.FrameCount == 38 && bake.Indices.Length == 20286, "Prepared topology and trimmed frame counts");
+Check(bake.VertexCount == 625 && bake.FrameCount == 61 && bake.Indices.Length == 3456, "Prepared Noot lattice and frame counts");
 float maxUvError = 0;
 for (int i = 0; i < bake.VertexCount; i++)
 {
@@ -60,3 +60,75 @@ for (int i = 1; i <= 1000; i++)
 }
 Check(last == new DiscardPose(1, 1, 0), "Continuous discard finishes compact, translated and invisible");
 Check(DiscardMotion.At(.72f) == new DiscardPose(1, 0, 1), "Compact paper holds briefly before release");
+
+foreach (var name in FxVariation.Families)
+{
+    var family = new PaperBake(Path.Combine(Path.GetDirectoryName(path)!, name + ".nfx"));
+    Check(family.UVs.SequenceEqual(bake.UVs) && family.Indices.SequenceEqual(bake.Indices) && family.FrameCount == bake.FrameCount,
+        name + ": compatible topology, UVs and frames");
+    for (int orientation = 0; orientation < 4; orientation++)
+    for (int id = 0; id < family.VertexCount; id++)
+    {
+        int x = id % 25, y = id / 25;
+        int mx = (orientation & 1) != 0 ? 24 - x : x, my = (orientation & 2) != 0 ? 24 - y : y;
+        var p = family.Samples[(my * 25 + mx) * 2];
+        p.X *= (orientation & 1) != 0 ? -1 : 1; p.Y *= (orientation & 2) != 0 ? -1 : 1;
+        if (Vector2.Distance(new(p.X + .5f, p.Y + .5f), family.UVs[id]) > 1e-6) throw new Exception("Mirrored ink handoff");
+    }
+    Check(true, name + ": all geometry reflections preserve the original flat UV appearance");
+    var min = new Vector3(float.MaxValue); var max = new Vector3(float.MinValue);
+    float maxStep = 0, maxEdgeRatio = 0;
+    for (int f = 0; f < family.FrameCount; f++)
+    {
+        Vector3 Position(int id) { var p = family.Samples[(f * family.VertexCount + id) * 2]; return new(p.X, p.Y, p.Z); }
+        for (int v = 0; v < family.VertexCount; v++)
+        {
+            var n = family.Samples[(f * family.VertexCount + v) * 2 + 1];
+            if (Math.Abs(new Vector3(n.X,n.Y,n.Z).Length()-1) > .001) throw new Exception("Non-unit normal");
+            if (f == family.FrameCount - 1) { min = Vector3.Min(min, Position(v)); max = Vector3.Max(max, Position(v)); }
+            if (f > 0) { var p = family.Samples[((f-1)*family.VertexCount+v)*2]; maxStep = Math.Max(maxStep, Vector3.Distance(Position(v), new(p.X,p.Y,p.Z))); }
+        }
+        for(int t=0;t<family.Indices.Length;t+=3) for(int e=0;e<3;e++)
+        {
+            int a=(int)family.Indices[t+e], b=(int)family.Indices[t+(e+1)%3];
+            maxEdgeRatio=Math.Max(maxEdgeRatio,Vector3.Distance(Position(a),Position(b))/Vector2.Distance(family.UVs[a],family.UVs[b]));
+        }
+    }
+    var extent=max-min;
+    Check(extent.X < .52 && extent.Y < .52 && extent.Z > .20 && extent.Z < .52, name+": compact non-planar final bounds");
+    Check(maxStep < .15 && maxEdgeRatio < 2, name+": bounded inter-frame motion and no stretched spikes");
+    Console.WriteLine($"{name}: final {extent}, max frame step {maxStep}, max edge stretch {maxEdgeRatio}");
+}
+Check(FxVariation.GoldenSeeds.Select(s => (FxVariation.FromSeed(s).Family, FxVariation.FromSeed(s).Orientation)).Distinct().Count() == 12,
+    "Golden suite covers every family/orientation pair");
+Check(FxVariation.FromSeed(0) == new FxVariation(0, 0, 0, .9892125f, .060517795f, 1, .26991993f, .5380957f, -.2699675f),
+    "Version 1 seed reference vector is stable");
+Check(FxVariation.FromSeed(uint.MaxValue).Family == 0 && FxVariation.FromSeed(uint.MaxValue).Orientation == 1,
+    "Full uint seed range, including wrap boundary");
+var fixturePath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "../../../fx-golden-seeds.json"));
+using (var fixture = System.Text.Json.JsonDocument.Parse(File.ReadAllText(fixturePath)))
+    Check(fixture.RootElement.GetProperty("seeds").EnumerateArray().Select(x => x.GetUInt32()).SequenceEqual(FxVariation.GoldenSeeds),
+        "Native regression and UI capture use the same golden seed fixture");
+for (int t=0;t<bake.Indices.Length;t+=3)
+{
+    Vector2 a=bake.UVs[bake.Indices[t]], b=bake.UVs[bake.Indices[t+1]], c=bake.UVs[bake.Indices[t+2]];
+    if ((b.X-a.X)*(c.Y-a.Y)-(b.Y-a.Y)*(c.X-a.X) <= 0) throw new Exception("Inverted rest panel");
+}
+Check(true, "Every irregular rest panel has consistent orientation");
+for (uint seed = 0; seed < 10000; seed++)
+{
+    var v = FxVariation.FromSeed(seed);
+    if (v != FxVariation.FromSeed(seed) || v.DurationScale < .95f || v.DurationScale > 1.05f || v.Hold < .035f || v.Hold > .065f ||
+        Math.Abs(v.Direction) != 1 || v.Travel < .24f || v.Travel > .30f || v.Rotation < .40f || v.Rotation > .58f || v.Lift < -.44f || v.Lift > -.26f)
+        throw new Exception("Variation escaped bounds");
+    var previous = DiscardMotion.At(0, v.Hold);
+    for (int t = 1; t <= 100; t++)
+    {
+        var pose = DiscardMotion.At(t / 100f, v.Hold);
+        if (pose.Deformation < previous.Deformation || pose.Throw < previous.Throw || pose.Opacity > previous.Opacity ||
+            (pose.Throw > 0 && pose.Deformation != 1)) throw new Exception("Seed timeline invalid");
+        previous = pose;
+    }
+}
+Check(true, "10,000 exact seeds: bounded variation and coherent gather/hold/release timeline");
+Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(FxVariation.GoldenSeeds.Select(FxVariation.FromSeed)));

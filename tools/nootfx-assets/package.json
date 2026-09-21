@@ -2,6 +2,5 @@
   "name": "nootfx-asset-preparation",
   "private": true,
   "type": "module",
-  "scripts": { "prepare": "node prepare.mjs" },
-  "dependencies": { "three": "0.183.2" }
+  "scripts": { "prepare": "node author.mjs", "check": "node author.mjs --check" }
 }

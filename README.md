@@ -11,7 +11,7 @@ accounts or cloud services. Native deletion graphics use Vortice Direct3D 11.
 ```
 
 Use `-Build` to rebuild after closing this build. Requires .NET 9 and the Windows
-build tools. Executable: `proto/artifacts/nootfx-polish/Noot.Proto.exe`.
+build tools. Executable: `proto/artifacts/nootfx-signature-checked/Noot.Proto.exe`.
 
 - **New note**, or **Ctrl+Alt+N** from anywhere while Noot is running. New notes
   focus the editor immediately; typing never waits for an animation.
@@ -54,27 +54,35 @@ the paper remains reachable. Full mixed-DPI and monitor docking tests are pendin
 ## Native NootFX deletion slice
 
 Floating notes now use a shared, lazy D3D11 renderer for animated menu discard:
-the actual XAML note is captured, a prepared Houdini paper bake deforms it on the
-GPU, and a short throw finishes the discard. Normal editing and the existing
+the actual XAML note is captured, one of three Noot-owned prepared paper bakes
+deforms it on the GPU, and a restrained throw finishes the discard. Corner Crush,
+Side Scrunch and Centre Collapse have distinct fold trajectories. An explicit
+seed selects geometry-only reflections, timing and release variation. Note text
+is never mirrored. Normal editing and the existing
 pickup/peel renderer remain native WinUI. Keyboard discard and reduced motion
 remain immediate. Graphics failures fall back to the saved, recoverable discard.
 Filtered fold shadows, 4x edge smoothing and a single fade of the assembled paper
-keep the crumple readable. The 760ms motion gathers, briefly holds, then throws.
+keep the crumple readable. Playback takes 722â€“798ms: gather, brief hold, then throw.
 
 ```powershell
 .\proto\run.ps1 -Build -FxLab     # DEBUG-only, isolated notes, slow/scrub controls
+.\proto\verify-fx-seeds-ui.ps1 -AppPid <pid> -Record -Aspects
 .\proto\run.ps1 -VerifyFx        # DEBUG-only native lifecycle/performance checks
 dotnet run --project proto/Noot.FxChecks/Noot.FxChecks.csproj
 ```
 
-The lab's Delete latest test note command uses the ordinary product discard
-path. Hold deformation and the slider inspect the bake; uncheck Hold to finish.
+The lab offers seed input, previous/next seed, selected family/orientation,
+exact replay, production speed, slow playback and held deformation. Its Delete
+latest test note command uses the ordinary saved-discard path. Hold deformation
+and the slider inspect the bake; uncheck Hold to finish.
 The hold automatically ends after 60 seconds. None of these controls appears in
 the everyday app or Release builds. See [NootFX implementation and verification](proto/NOOTFX.md)
 for architecture, provenance, measured results and outstanding verification.
 The lab also offers six size/colour/content samples and screen-corner placement.
-`proto/verify-fx-polish-ui.ps1 -AppPid <pid>` exercises a fresh lab and records
-normal/slow playback for visual review.
+`proto/fx-golden-seeds.json` defines 18 fixed QA seeds, including every family and
+reflection plus the timing extremes. The seed verification script captures those
+poses, six paper samples and actual production-speed discard/Undo recordings.
+`node tools/nootfx-assets/author.mjs --check` verifies reproducible owned bakes.
 
 ## Paper comparison bench
 
@@ -119,8 +127,8 @@ or screenshot assertions. See `proto/VERIFICATION.md` for evidence and limitatio
 
 ## Next
 
-- Refine the crumple silhouette, diagonal creases and shadows after feel testing.
-  The current bundle is a stylised approximation without paper self-collision.
+- Everyday feel testing of the three seeded discard families. The current
+  bundles deliberately use a stylised approximation without self-collision.
 - Better contact shadows and resting material; human feel testing over days.
 - Transparent-padding pass-through and deformed-silhouette hit testing.
 - Verify the frameless popup treatment on Windows 11 and mixed-DPI monitors; the

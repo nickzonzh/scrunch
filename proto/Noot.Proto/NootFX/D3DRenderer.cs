@@ -25,6 +25,8 @@ internal sealed class D3DRenderer : IDisposable
     private ID3D11PixelShader _compositePs = null!;
     private ID3D11Buffer _settings = null!, _indices = null!;
     private ID3D11ShaderResourceView _bakeView = null!, _uvView = null!;
+    private readonly ID3D11ShaderResourceView[] _bakeViews = new ID3D11ShaderResourceView[3];
+    private FxVariation _variation;
     private ID3D11RasterizerState _raster = null!;
     private ID3D11SamplerState _sampler = null!;
     private ID3D11SamplerState _comparison = null!;
@@ -74,15 +76,33 @@ internal sealed class D3DRenderer : IDisposable
         _composition.CreateTargetForHwnd(Overlay.Handle, true, out var compTarget).CheckError(); Keep(compTarget);
         _composition.CreateVisual(out _visual).CheckError(); Keep(_visual);
         compTarget.SetRoot(_visual).CheckError();
-        var bake = new PaperBake(Path.Combine(AppContext.BaseDirectory, "Assets", "NootFX", "crumple.nfx"));
+        var bake = new PaperBake(Path.Combine(AppContext.BaseDirectory, "Assets", "NootFX", FxVariation.Families[0] + ".nfx"));
         _indexCount = (uint)bake.Indices.Length; _vertexCount = bake.VertexCount; _frames = bake.FrameCount;
-        var samples = Keep(_device.CreateBuffer(bake.Samples, BindFlags.ShaderResource, ResourceUsage.Immutable,
-            CpuAccessFlags.None, ResourceOptionFlags.BufferStructured, structureByteStride: 16));
+        int side = (int)Math.Sqrt(_vertexCount);
+        if (side * side != _vertexCount) throw new InvalidDataException("NootFX requires a square reflection lattice");
+        for (int id = 0; id < _vertexCount; id++)
+        {
+            var uv = bake.UVs[id];
+            var mx = bake.UVs[id / side * side + side - 1 - id % side];
+            var my = bake.UVs[(side - 1 - id / side) * side + id % side];
+            if (Vector2.Distance(mx, new Vector2(1 - uv.X, uv.Y)) > .00001f ||
+                Vector2.Distance(my, new Vector2(uv.X, 1 - uv.Y)) > .00001f)
+                throw new InvalidDataException("NootFX asset is not reflection compatible");
+        }
+        for (int family = 0; family < _bakeViews.Length; family++)
+        {
+            var familyBake = family == 0 ? bake : new PaperBake(Path.Combine(AppContext.BaseDirectory, "Assets", "NootFX", FxVariation.Families[family] + ".nfx"));
+            if (familyBake.FrameCount != bake.FrameCount || !familyBake.UVs.SequenceEqual(bake.UVs) || !familyBake.Indices.SequenceEqual(bake.Indices))
+                throw new InvalidDataException("NootFX family topology mismatch");
+            var samples = Keep(_device.CreateBuffer(familyBake.Samples, BindFlags.ShaderResource, ResourceUsage.Immutable,
+                CpuAccessFlags.None, ResourceOptionFlags.BufferStructured, structureByteStride: 16));
+            _bakeViews[family] = Keep(_device.CreateShaderResourceView(samples));
+        }
         var uvs = Keep(_device.CreateBuffer(bake.UVs, BindFlags.ShaderResource, ResourceUsage.Immutable,
             CpuAccessFlags.None, ResourceOptionFlags.BufferStructured, structureByteStride: 8));
-        _bakeView = Keep(_device.CreateShaderResourceView(samples)); _uvView = Keep(_device.CreateShaderResourceView(uvs));
+        _uvView = Keep(_device.CreateShaderResourceView(uvs));
         _indices = Keep(_device.CreateBuffer(bake.Indices, BindFlags.IndexBuffer, ResourceUsage.Immutable));
-        _settings = Keep(_device.CreateBuffer(64, BindFlags.ConstantBuffer));
+        _settings = Keep(_device.CreateBuffer(96, BindFlags.ConstantBuffer));
         string hlsl = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "NootFX", "Paper.hlsl"));
         var vs = Compiler.Compile(hlsl, "VS", "Paper.hlsl", "vs_5_0"); var ps = Compiler.Compile(hlsl, "PS", "Paper.hlsl", "ps_5_0");
         _vs = Keep(_device.CreateVertexShader(vs.Span)); _ps = Keep(_device.CreatePixelShader(ps.Span));
@@ -111,8 +131,9 @@ internal sealed class D3DRenderer : IDisposable
         _noDepth = Keep(_device.CreateDepthStencilState(DepthStencilDescription.None));
     }
 
-    public unsafe void Prepare(NoteSnapshot snapshot, int padding)
+    public unsafe void Prepare(NoteSnapshot snapshot, int padding, FxVariation variation)
     {
+        _variation = variation; _bakeView = _bakeViews[variation.Family];
         int width = snapshot.Width + padding * 2, height = snapshot.Height + padding * 2;
         if (width != _width || height != _height || _swap == null)
         {
@@ -146,7 +167,7 @@ internal sealed class D3DRenderer : IDisposable
         _noteView = _device.CreateShaderResourceView(_note);
         Overlay.Position(snapshot.ScreenX - padding, snapshot.ScreenY - padding, width, height);
     }
-    [StructLayout(LayoutKind.Sequential)] private struct Settings { public Vector4 Viewport, Playback, Colour, Origin; }
+    [StructLayout(LayoutKind.Sequential)] private struct Settings { public Vector4 Viewport, Playback, Colour, Origin, Variation, Orientation; }
     public void Render(NoteSnapshot snapshot, float deformation, float discard, float opacity)
     {
         // Unbind previous frame's reads before writing to those surfaces.
@@ -163,7 +184,9 @@ internal sealed class D3DRenderer : IDisposable
             Viewport = new Vector4(_width, _height, snapshot.Width, snapshot.Height),
             Playback = new Vector4(Math.Min(deformation * (_frames - 1), _frames - 1.0001f), _vertexCount, discard, opacity),
             Colour = snapshot.Colour,
-            Origin = new Vector4(_width / 2f, _height / 2f, deformation, 0)
+            Origin = new Vector4(_width / 2f, _height / 2f, deformation, 0),
+            Variation = new Vector4(_variation.Direction, _variation.Travel, _variation.Rotation, _variation.Lift),
+            Orientation = new Vector4((_variation.Orientation & 1) != 0 ? -1 : 1, (_variation.Orientation & 2) != 0 ? -1 : 1, MathF.Sqrt(_vertexCount), 0)
         };
         // A small shared directional depth map makes overlapping folds readable.
         _context.UpdateSubresource(in settings, _settings);

@@ -1,0 +1,3 @@
+*.nfx binary
+tools/nootfx-assets/author.mjs text eol=lf
+proto/Noot.Proto/Assets/NootFX/noot-provenance.json text eol=lf

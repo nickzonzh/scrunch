@@ -7,6 +7,42 @@ namespace Noot_Proto;
 
 public sealed partial class ProductWindow
 {
+    private void AddFxSeedControls(Microsoft.UI.Xaml.Controls.StackPanel stack)
+    {
+        var seed = new Microsoft.UI.Xaml.Controls.TextBox { Header = "FX seed (uint32)", Text = "0" };
+        var selected = new Microsoft.UI.Xaml.Controls.TextBlock { TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(seed, "FxSeed");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(selected, "FxSelection");
+        void Update()
+        {
+            if (!uint.TryParse(seed.Text, out uint value)) { selected.Text = "Enter an integer from 0 to 4294967295"; return; }
+            NootFxService.SeedOverride = value;
+            var v = FxVariation.FromSeed(value);
+            selected.Text = $"{v.FamilyName} · {v.OrientationName}\n{DiscardMotion.DurationMs * v.DurationScale:F0}ms · throw {(v.Direction < 0 ? "left" : "right")}";
+        }
+        seed.TextChanged += (_, _) => Update(); Update();
+        stack.Children.Add(seed); stack.Children.Add(selected);
+        var buttons = new Microsoft.UI.Xaml.Controls.StackPanel { Orientation = Microsoft.UI.Xaml.Controls.Orientation.Horizontal, Spacing = 8 };
+        foreach (var (name, id, delta) in new[] { ("Previous seed", "FxPreviousSeed", -1), ("Next seed", "FxNextSeed", 1) })
+        {
+            var button = new Microsoft.UI.Xaml.Controls.Button { Content = name };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(button, id);
+            button.Click += (_, _) => { if (uint.TryParse(seed.Text, out uint value)) seed.Text = unchecked(value + (uint)delta).ToString(); };
+            buttons.Children.Add(button);
+        }
+        stack.Children.Add(buttons);
+        var replay = new Microsoft.UI.Xaml.Controls.Button { Content = "Replay current seed" };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(replay, "FxReplay");
+        replay.Click += async (_, _) =>
+        {
+            if (NootFxService.Shared.Active || !uint.TryParse(seed.Text, out _)) return;
+            var note = _windows.Values.LastOrDefault();
+            if (note == null) { UndoDiscard(); note = _windows.Values.LastOrDefault(); }
+            if (note == null) { await NextFxSampleAsync(); note = _windows.Values.LastOrDefault(); }
+            if (note != null) { for (int i = 0; !note.EditorLoaded && i < 60; i++) await Task.Delay(50); if (note.EditorLoaded) await note.PlayDiscardAsync(); }
+        };
+        stack.Children.Add(replay);
+    }
     private int _fxSample;
     private int _fxCorner;
     private void NextFxCorner()
@@ -62,6 +98,7 @@ public sealed partial class ProductWindow
         }
         try
         {
+            NootFxService.SeedOverride = FxVariation.GoldenSeeds[0];
             Check(fx.DeviceCreations == 0 && !fx.Active, "Cold startup creates no D3D device");
             using var process = Process.GetCurrentProcess();
             await Task.Delay(3000);
@@ -111,6 +148,7 @@ public sealed partial class ProductWindow
             bool retentionProbe = Environment.GetCommandLineArgs().Contains("--fx-retention-probe");
             for (int i = 0; i < (retentionProbe ? 0 : 30); i++)
             {
+                NootFxService.SeedOverride = FxVariation.GoldenSeeds[i % FxVariation.GoldenSeeds.Length];
                 await note.PlayDiscardAsync();
                 if (i % 10 == 9)
                 {
@@ -132,6 +170,7 @@ public sealed partial class ProductWindow
             var closedNotes = new List<WeakReference<NoteWindow>>();
             for (int i = 0; i < (retentionProbe ? 10 : 40); i++)
             {
+                NootFxService.SeedOverride = FxVariation.GoldenSeeds[i % FxVariation.GoldenSeeds.Length];
                 if (record.DeletedAt != null) { UndoDiscard(); await Until(() => _windows.TryGetValue(record.Id, out var w) && w.EditorLoaded); }
                 note = _windows[record.Id]; note.Discard(animate: true);
                 await Until(() => !_windows.ContainsKey(record.Id));
@@ -167,7 +206,7 @@ public sealed partial class ProductWindow
             samples.Add(Resources(41));
         }
         catch (Exception exception) { error = exception.ToString(); }
-        finally { NootFxService.InjectFailure = null; }
+        finally { NootFxService.InjectFailure = null; NootFxService.SeedOverride = null; }
         File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "fx-verification.json"),
             JsonSerializer.Serialize(new { passed = error == null, checks, samples, adapter = fx.Adapter, error }, new JsonSerializerOptions { WriteIndented = true }));
         if (!Environment.GetCommandLineArgs().Contains("--inspect-note") && PrepareQuit()) Close();

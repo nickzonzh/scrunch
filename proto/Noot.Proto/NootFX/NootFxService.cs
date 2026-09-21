@@ -21,7 +21,10 @@ internal sealed class NootFxService : IDisposable
     public FxResult LastResult { get; private set; } = new("Not started", 0);
     public string Adapter => _renderer?.Adapter ?? "Dormant (device not created)";
     public static bool SlowPlayback { get; set; }
+    private uint _eventSeed = unchecked((uint)Environment.TickCount64);
+    public FxVariation LastVariation { get; private set; }
 #if DEBUG
+    internal static uint? SeedOverride { get; set; }
     internal static string? InjectFailure { get; set; }
     internal static float? HeldProgress { get; set; }
 #endif
@@ -30,6 +33,11 @@ internal sealed class NootFxService : IDisposable
     {
         if (Active) return new FxResult("Busy fallback", 0);
         Active = true;
+        uint seed = _eventSeed++;
+#if DEBUG
+        seed = SeedOverride ?? seed;
+#endif
+        var variation = FxVariation.FromSeed(seed); LastVariation = variation;
         var intervals = new List<double>(); var draws = new List<double>();
         int frames = 0; string outcome = "Immediate fallback";
         var total = Stopwatch.StartNew();
@@ -44,12 +52,12 @@ internal sealed class NootFxService : IDisposable
             if (InjectFailure == "asset") throw new InvalidDataException("Injected missing or invalid bake");
 #endif
             if (_renderer == null) { _renderer = D3DRenderer.Create(); DeviceCreations++; }
-            _renderer.Prepare(snapshot, (int)Math.Ceiling(Math.Max(snapshot.Width, snapshot.Height) * .65));
+            _renderer.Prepare(snapshot, (int)Math.Ceiling(Math.Max(snapshot.Width, snapshot.Height) * .65), variation);
             _renderer.Render(snapshot, 0, 0, 1);
             _renderer.Overlay.Show(); showSource(false);
             var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var clock = Stopwatch.StartNew(); double previous = 0;
-            double duration = SlowPlayback ? 18000 : DiscardMotion.DurationMs;
+            double duration = (SlowPlayback ? 18000 : DiscardMotion.DurationMs) * variation.DurationScale;
             Exception? renderError = null;
             // WinUI's Rendering event measured ~31ms on this Windows 10 host,
             // even though D3D draws took <1ms. An effect-scoped dispatcher timer
@@ -70,7 +78,7 @@ internal sealed class NootFxService : IDisposable
 #endif
                     double elapsed = clock.Elapsed.TotalMilliseconds;
                     float progress = Math.Clamp((float)(elapsed / duration), 0, 1);
-                    var pose = DiscardMotion.At(progress);
+                    var pose = DiscardMotion.At(progress, variation.Hold);
 #if DEBUG
                     if (HeldProgress is { } held) pose = new DiscardPose(held, 0, 1);
 #endif
@@ -107,7 +115,7 @@ internal sealed class NootFxService : IDisposable
             showSource(true); Active = false;
             LastResult = new FxResult(outcome, frames);
             using var process = Process.GetCurrentProcess();
-            WriteDiagnostic(new { outcome, frames, elapsedMs = total.Elapsed.TotalMilliseconds, adapter = Adapter,
+            WriteDiagnostic(new { outcome, frames, variation, elapsedMs = total.Elapsed.TotalMilliseconds, adapter = Adapter,
                 frameMedianMs = Percentile(intervals, .5), frameP95Ms = Percentile(intervals, .95),
                 drawMedianMs = Percentile(draws, .5), drawP95Ms = Percentile(draws, .95),
                 Active, Drawing, DeviceCreations, CompletedEffects, TotalFrames, samples = _renderer?.Samples,
