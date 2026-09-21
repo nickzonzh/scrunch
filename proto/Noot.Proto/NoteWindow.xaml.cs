@@ -85,6 +85,9 @@ public sealed partial class NoteWindow : Window
     public int LastDiscardFrames { get; private set; }
     public string LastDiscardOutcome { get; private set; } = "Not started";
     internal long NativeHandle => _hwnd.ToInt64();
+#if DEBUG
+    internal double RasterScaleForCheck => Note.XamlRoot.RasterizationScale;
+#endif
     internal bool HasNativeFrame => (GetWindowLong(_hwnd, -16) & 0x00C40000) != 0 || (GetWindowLong(_hwnd, -20) & 0x00020301) != 0;
     internal void PinForInspection()
     {

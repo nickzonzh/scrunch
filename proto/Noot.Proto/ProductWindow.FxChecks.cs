@@ -7,6 +7,40 @@ namespace Noot_Proto;
 
 public sealed partial class ProductWindow
 {
+    private int _fxSample;
+    private int _fxCorner;
+    private void NextFxCorner()
+    {
+        if (NootFxService.Shared.Active || _windows.Values.LastOrDefault() is not { } note) return;
+        var area = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(note.AppWindow.Id,
+            Microsoft.UI.Windowing.DisplayAreaFallback.Nearest).WorkArea;
+        int overhang = (int)Math.Round(60 * note.RasterScaleForCheck);
+        int corner = _fxCorner++ % 4;
+        note.AppWindow.Move(new Windows.Graphics.PointInt32(
+            corner % 2 == 0 ? area.X - overhang : area.X + area.Width - note.AppWindow.Size.Width + overhang,
+            corner < 2 ? area.Y - overhang : area.Y + area.Height - note.AppWindow.Size.Height + overhang));
+        note.PinForInspection();
+    }
+    private static readonly (string Colour, int Width, int Height, string Text)[] FxSamples =
+    [
+        ("yellow", 220, 180, "SMALL / 220 × 180\nMilk + bread"),
+        ("mint", 440, 180, "WIDE / 440 × 180\nRemember the green notebook.\nLonger handwritten lines stay on the same paper."),
+        ("pink", 220, 440, "TALL / 220 × 440\nOne\nTwo\nThree\nFour\nFive\nSix\nSeven\nEight\nNine\nTen\nEleven\nTwelve\nStill the same note."),
+        ("blue", 440, 440, "LARGE / 440 × 440\n\nA note with room to breathe.\nThe colour, grain and ink should survive every fold."),
+        ("lavender", 300, 320, ""),
+        ("peach", 300, 320, string.Join("\n", Enumerable.Range(1, 18).Select(i => $"{i}. A dense note wraps onto another line.")))
+    ];
+    private async Task NextFxSampleAsync()
+    {
+        if (NootFxService.Shared.Active) return;
+        var note = _windows.Values.LastOrDefault() ?? CreateNote();
+        if (note == null) return;
+        for (int i = 0; i < 60 && !note.EditorLoaded; i++) await Task.Delay(50);
+        if (!note.EditorLoaded) return;
+        var sample = FxSamples[_fxSample++ % FxSamples.Length];
+        note.SetTestContent(sample.Text, sample.Colour, sample.Width, sample.Height);
+        note.PinForInspection(); note.FocusEditor();
+    }
     // Exercises actual product windows, storage, capture, menu automation peer,
     // cancellation and native D3D rendering. Always uses an isolated data folder.
     private async Task VerifyFxAsync()
@@ -14,6 +48,7 @@ public sealed partial class ProductWindow
         var checks = new List<string>(); var samples = new List<object>(); string? error = null;
         var fx = NootFxService.Shared;
         void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); checks.Add(message); }
+        string NormalText(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
         async Task Until(Func<bool> condition, int milliseconds = 5000)
         {
             var watch = Stopwatch.StartNew();
@@ -37,6 +72,8 @@ public sealed partial class ProductWindow
             note.SetTestContent("NootFX regression\nActual native ink / 21 September\n\nRemember the green notebook.", "mint", 360, 280);
             await Task.Delay(400);
             var record = note.Record!;
+            samples.Add(new { stage = "native display", rasterScale = note.RasterScaleForCheck,
+                displays = Microsoft.UI.Windowing.DisplayArea.FindAll().Count });
             await note.InvokeMenuDiscardForCheckAsync();
             await Until(() => !_windows.ContainsKey(record.Id));
             Check(note.LastDiscardOutcome == "Animated" && note.LastDiscardFrames > 5, "Native menu discard captures the real note and renders D3D frames");
@@ -47,6 +84,29 @@ public sealed partial class ProductWindow
             Check(record.DeletedAt == null && _windows[record.Id] == note && !note.IsDiscarding, "Undo during capture preserves the original editable window");
             note.SetTestContent("Editing after cancellation works", "peach", 300, 320);
             Check(record.Text == "Editing after cancellation works", "Editing still updates the record after cancellation");
+            foreach (var sample in FxSamples)
+            {
+                note.SetTestContent(sample.Text, sample.Colour, sample.Width, sample.Height);
+                await Task.Delay(150);
+                await note.PlayDiscardAsync();
+                Check(note.LastDiscardOutcome == "Animated" && !fx.Drawing && NormalText(record.Text) == NormalText(sample.Text),
+                    $"{sample.Colour} {sample.Width}x{sample.Height}: capture, surface resize, playback and editing content preserved");
+            }
+            // Move the real WinUI note between the actual attached displays;
+            // capture follows XamlRoot's native scale rather than a mocked DPI.
+            var displays = Microsoft.UI.Windowing.DisplayArea.FindAll();
+            // Indexed access avoids this SDK projection's IVectorView enumerator
+            // cast failure on Windows 10; Count/GetAt are supported here.
+            for (int displayIndex = 0; displayIndex < displays.Count; displayIndex++)
+            {
+                var area = displays[displayIndex].WorkArea;
+                note.AppWindow.Move(new Windows.Graphics.PointInt32(area.X + 100, area.Y + 100));
+                await Task.Delay(500);
+                await note.PlayDiscardAsync();
+                Check(note.LastDiscardOutcome == "Animated" && !fx.Drawing,
+                    $"Display at {area.X},{area.Y}, scale {note.RasterScaleForCheck}: native capture and playback");
+                samples.Add(new { stage = "display playback", x = area.X, y = area.Y, area.Width, area.Height, rasterScale = note.RasterScaleForCheck });
+            }
             // Isolate renderer/capture retention from WinUI window recreation.
             bool retentionProbe = Environment.GetCommandLineArgs().Contains("--fx-retention-probe");
             for (int i = 0; i < (retentionProbe ? 0 : 30); i++)

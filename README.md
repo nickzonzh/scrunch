@@ -11,7 +11,7 @@ accounts or cloud services. Native deletion graphics use Vortice Direct3D 11.
 ```
 
 Use `-Build` to rebuild after closing this build. Requires .NET 9 and the Windows
-build tools. Executable: `proto/artifacts/nootfx-checked/Noot.Proto.exe`.
+build tools. Executable: `proto/artifacts/nootfx-polish/Noot.Proto.exe`.
 
 - **New note**, or **Ctrl+Alt+N** from anywhere while Noot is running. New notes
   focus the editor immediately; typing never waits for an animation.
@@ -58,6 +58,8 @@ the actual XAML note is captured, a prepared Houdini paper bake deforms it on th
 GPU, and a short throw finishes the discard. Normal editing and the existing
 pickup/peel renderer remain native WinUI. Keyboard discard and reduced motion
 remain immediate. Graphics failures fall back to the saved, recoverable discard.
+Filtered fold shadows, 4x edge smoothing and a single fade of the assembled paper
+keep the crumple readable. The 760ms motion gathers, briefly holds, then throws.
 
 ```powershell
 .\proto\run.ps1 -Build -FxLab     # DEBUG-only, isolated notes, slow/scrub controls
@@ -70,6 +72,9 @@ path. Hold deformation and the slider inspect the bake; uncheck Hold to finish.
 The hold automatically ends after 60 seconds. None of these controls appears in
 the everyday app or Release builds. See [NootFX implementation and verification](proto/NOOTFX.md)
 for architecture, provenance, measured results and outstanding verification.
+The lab also offers six size/colour/content samples and screen-corner placement.
+`proto/verify-fx-polish-ui.ps1 -AppPid <pid>` exercises a fresh lab and records
+normal/slow playback for visual review.
 
 ## Paper comparison bench
 
