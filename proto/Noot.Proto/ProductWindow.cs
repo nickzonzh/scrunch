@@ -64,6 +64,14 @@ public sealed partial class ProductWindow : Window
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(discard, "FxDelete");
             discard.Click += (_, _) => _windows.Values.LastOrDefault(w => !w.IsDiscarding)?.Discard(animate: true);
             stack.Children.Add(discard);
+            var sample = new Button { Content = "Next paper sample" };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(sample, "FxSample");
+            sample.Click += async (_, _) => await NextFxSampleAsync();
+            stack.Children.Add(sample);
+            var corner = new Button { Content = "Move sample to next screen corner" };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(corner, "FxCorner");
+            corner.Click += (_, _) => NextFxCorner();
+            stack.Children.Add(corner);
             stack.Width = 440; stack.HorizontalAlignment = HorizontalAlignment.Left;
             AppWindow.MoveAndResize(new RectInt32(100, 100, 1240, 840));
         }

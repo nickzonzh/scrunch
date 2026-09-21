@@ -49,7 +49,7 @@ internal sealed class NootFxService : IDisposable
             _renderer.Overlay.Show(); showSource(false);
             var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var clock = Stopwatch.StartNew(); double previous = 0;
-            double duration = SlowPlayback ? 18000 : 680;
+            double duration = SlowPlayback ? 18000 : DiscardMotion.DurationMs;
             Exception? renderError = null;
             // WinUI's Rendering event measured ~31ms on this Windows 10 host,
             // even though D3D draws took <1ms. An effect-scoped dispatcher timer
@@ -70,13 +70,12 @@ internal sealed class NootFxService : IDisposable
 #endif
                     double elapsed = clock.Elapsed.TotalMilliseconds;
                     float progress = Math.Clamp((float)(elapsed / duration), 0, 1);
-                    float deformation = Math.Clamp(progress / .77f, 0, 1);
-                    float discard = Math.Clamp((progress - .77f) / .23f, 0, 1);
+                    var pose = DiscardMotion.At(progress);
 #if DEBUG
-                    if (HeldProgress is { } held) { deformation = held; discard = 0; }
+                    if (HeldProgress is { } held) pose = new DiscardPose(held, 0, 1);
 #endif
                     var draw = Stopwatch.StartNew();
-                    _renderer.Render(snapshot, deformation, discard, 1 - Math.Clamp((discard - .55f) / .45f, 0, 1));
+                    _renderer.Render(snapshot, pose.Deformation, pose.Throw, pose.Opacity);
                     draws.Add(draw.Elapsed.TotalMilliseconds);
                     if (frames > 0) intervals.Add(elapsed - previous);
                     previous = elapsed; frames++; TotalFrames++;
@@ -111,7 +110,7 @@ internal sealed class NootFxService : IDisposable
             WriteDiagnostic(new { outcome, frames, elapsedMs = total.Elapsed.TotalMilliseconds, adapter = Adapter,
                 frameMedianMs = Percentile(intervals, .5), frameP95Ms = Percentile(intervals, .95),
                 drawMedianMs = Percentile(draws, .5), drawP95Ms = Percentile(draws, .95),
-                Active, Drawing, DeviceCreations, CompletedEffects, TotalFrames,
+                Active, Drawing, DeviceCreations, CompletedEffects, TotalFrames, samples = _renderer?.Samples,
                 privateBytes = process.PrivateMemorySize64, handles = process.HandleCount });
         }
         return LastResult;

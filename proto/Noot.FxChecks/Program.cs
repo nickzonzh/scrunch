@@ -46,3 +46,17 @@ try
 }
 finally { File.Delete(temporary); }
 Console.WriteLine($"Flat UV error: {maxUvError}; initial extents: {first}; final extents: {final}");
+var last = DiscardMotion.At(0);
+Check(last == new DiscardPose(0, 0, 1), "Handoff starts flat, stationary and fully opaque");
+for (int i = 1; i <= 1000; i++)
+{
+    var pose = DiscardMotion.At(i / 1000f);
+    if (pose.Deformation < last.Deformation || pose.Throw < last.Throw || pose.Opacity > last.Opacity ||
+        pose.Deformation > 1 || pose.Throw > 1 || pose.Opacity < 0) throw new Exception("Motion reverses or overshoots");
+    if (pose.Throw > 0 && pose.Deformation != 1) throw new Exception("Throw starts before crumple completes");
+    if (pose.Deformation - last.Deformation > .003 || pose.Throw - last.Throw > .009 || last.Opacity - pose.Opacity > .012)
+        throw new Exception("Discontinuous motion");
+    last = pose;
+}
+Check(last == new DiscardPose(1, 1, 0), "Continuous discard finishes compact, translated and invisible");
+Check(DiscardMotion.At(.72f) == new DiscardPose(1, 0, 1), "Compact paper holds briefly before release");
