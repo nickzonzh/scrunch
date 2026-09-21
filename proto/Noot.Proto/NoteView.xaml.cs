@@ -24,6 +24,27 @@ public sealed partial class NoteView : UserControl
     public string ColourKey { get; private set; } = "yellow";
     public int FeelIndex { get; private set; } = 1;
     public bool ReducedMotion { get; private set; }
+    internal bool AllowNativeFx => !ReducedMotion && _settings.AnimationsEnabled && IsLoaded;
+    internal async Task<NootFX.NoteSnapshot> CaptureForFxAsync(IntPtr window)
+    {
+        Edit();
+        var bitmap = new RenderTargetBitmap();
+        double scale = XamlRoot.RasterizationScale;
+        await bitmap.RenderAsync(Paper, (int)Math.Round(Paper.Width * scale), (int)Math.Round(Paper.Height * scale));
+        var buffer = await bitmap.GetPixelsAsync();
+        byte[] pixels = System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions.ToArray(buffer);
+        if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0 || pixels.Length != bitmap.PixelWidth * bitmap.PixelHeight * 4)
+            throw new InvalidOperationException("The native note snapshot is empty");
+        var point = Paper.TransformToVisual(this).TransformPoint(new Point(0, 0));
+        var screen = new FxPoint { X = (int)Math.Round(point.X * scale), Y = (int)Math.Round(point.Y * scale) };
+        if (!ClientToScreen(window, ref screen)) throw new System.ComponentModel.Win32Exception();
+        var colour = PaperTokens.Colours[ColourKey];
+        return new NootFX.NoteSnapshot(pixels, bitmap.PixelWidth, bitmap.PixelHeight, screen.X, screen.Y,
+            new Vector4(colour.R / 255f, colour.G / 255f, colour.B / 255f, 1));
+    }
+    internal void ShowFxSource(bool visible) { if (IsLoaded) Opacity = visible ? 1 : 0; }
+    [StructLayout(LayoutKind.Sequential)] private struct FxPoint { public int X, Y; }
+    [DllImport("user32.dll")] private static extern bool ClientToScreen(IntPtr window, ref FxPoint point);
     public bool AnimateOnLoad { get; set; } = true;
     public double PaperWidth => Paper.Width;
     public double PaperHeight => Paper.Height;
@@ -77,8 +98,8 @@ public sealed partial class NoteView : UserControl
             Grip.PointerReleased += ResizeReleased;
             Grip.PointerCanceled += ResizeReleased;
             Grip.PointerCaptureLost += ResizeReleased;
-            NoteText.GotFocus += (_, _) => { if (!_discarding && !_inspection) Edit(); };
-            NoteText.TextChanging += (_, _) => { _contentVersion++; Edit(); Changed?.Invoke(this, EventArgs.Empty); };
+            NoteText.GotFocus += EditorGotFocus;
+            NoteText.TextChanging += EditorTextChanging;
         }
         BuildFibres();
         try
@@ -93,12 +114,24 @@ public sealed partial class NoteView : UserControl
         Report("Ready. Drag the top edge or click to write.");
     }
     private void AnimationsChanged(UISettings sender, object args) => DispatcherQueue.TryEnqueue(() => SetReducedMotion(ReducedMotion));
-    private void NoteView_Unloaded(object sender, RoutedEventArgs e)
+    private void NoteView_Unloaded(object sender, RoutedEventArgs e) => ReleaseGraphics();
+    internal void ReleaseGraphics()
     {
         _request++;
+        if (_wired)
+        {
+            GrabZone.PointerPressed -= GrabPressed; GrabZone.PointerMoved -= GrabMoved;
+            GrabZone.PointerReleased -= GrabReleased; GrabZone.PointerCanceled -= GrabReleased; GrabZone.PointerCaptureLost -= GrabReleased;
+            Grip.PointerPressed -= ResizePressed; Grip.PointerMoved -= ResizeMoved;
+            Grip.PointerReleased -= ResizeReleased; Grip.PointerCanceled -= ResizeReleased; Grip.PointerCaptureLost -= ResizeReleased;
+            NoteText.GotFocus -= EditorGotFocus; NoteText.TextChanging -= EditorTextChanging;
+            _wired = false;
+        }
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041)) _settings.AnimationsEnabledChanged -= AnimationsChanged;
         _renderer?.Dispose(); _renderer = null;
     }
+    private void EditorGotFocus(object sender, RoutedEventArgs args) { if (!_discarding && !_inspection) Edit(); }
+    private void EditorTextChanging(TextBox sender, TextBoxTextChangingEventArgs args) { _contentVersion++; Edit(); Changed?.Invoke(this, EventArgs.Empty); }
     private void BuildFibres()
     {
         // Fixed DIP density: resizing reveals more paper instead of stretching grain.

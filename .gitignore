@@ -1,6 +1,7 @@
 **/bin/
 **/obj/
 proto/artifacts/
+tools/nootfx-assets/node_modules/
 *.log
 
 # Local IDE state and diagnostics

@@ -7,7 +7,7 @@ using WinRT.Interop;
 namespace Noot_Proto;
 
 // A small launch/control surface. Notes themselves remain the workspace.
-public sealed class ProductWindow : Window
+public sealed partial class ProductWindow : Window
 {
     private readonly NoteStore _store;
     private readonly Dictionary<Guid, NoteWindow> _windows = new();
@@ -30,6 +30,7 @@ public sealed class ProductWindow : Window
         stack.Children.Add(new TextBlock { Text = "Noot", FontSize = 34, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         stack.Children.Add(new TextBlock { Text = "A little thing to remember.\nSomewhere good to leave it.", FontSize = 17, TextWrapping = TextWrapping.Wrap });
         var create = new Button { Content = "New note", HorizontalAlignment = HorizontalAlignment.Stretch };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(create, "NewNote");
         create.Click += (_, _) => CreateNote();
         stack.Children.Add(create);
         stack.Children.Add(_shortcut);
@@ -41,6 +42,32 @@ public sealed class ProductWindow : Window
         actions.Children.Add(show); actions.Children.Add(_undo); stack.Children.Add(actions);
         stack.Children.Add(new TextBlock { Text = "Drag a note by its top edge. Right-click that edge for colour, pinning and discard.\n\nMinimise this window to keep Noot nearby. Closing it saves your notes and quits.", TextWrapping = TextWrapping.Wrap, Opacity = 0.7 });
         stack.Children.Add(_notice);
+#if DEBUG
+        if (Environment.GetCommandLineArgs().Contains("--fx-lab"))
+        {
+            Title = "Noot — isolated FX lab";
+            var slow = new CheckBox { Content = "Slow NootFX (18 seconds)", IsChecked = true };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(slow, "FxSlow");
+            NootFX.NootFxService.SlowPlayback = true;
+            slow.Checked += (_, _) => NootFX.NootFxService.SlowPlayback = true;
+            slow.Unchecked += (_, _) => NootFX.NootFxService.SlowPlayback = false;
+            stack.Children.Add(slow);
+            var hold = new CheckBox { Content = "Hold deformation for inspection" };
+            var progress = new Slider { Minimum = 0, Maximum = 1, StepFrequency = .05, Value = .5, Header = "Deformation" };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(progress, "FxProgress");
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(hold, "FxHold");
+            hold.Checked += (_, _) => NootFX.NootFxService.HeldProgress = (float)progress.Value;
+            hold.Unchecked += (_, _) => NootFX.NootFxService.HeldProgress = null;
+            progress.ValueChanged += (_, _) => { if (hold.IsChecked == true) NootFX.NootFxService.HeldProgress = (float)progress.Value; };
+            stack.Children.Add(hold); stack.Children.Add(progress);
+            var discard = new Button { Content = "Delete latest test note" };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(discard, "FxDelete");
+            discard.Click += (_, _) => _windows.Values.LastOrDefault(w => !w.IsDiscarding)?.Discard(animate: true);
+            stack.Children.Add(discard);
+            stack.Width = 440; stack.HorizontalAlignment = HorizontalAlignment.Left;
+            AppWindow.MoveAndResize(new RectInt32(100, 100, 1240, 840));
+        }
+#endif
         Content = new ScrollViewer { Content = stack, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         _hotkey = new NewNoteHotkey(WindowNative.GetWindowHandle(this), () => CreateNote());
         _shortcut.Text = _hotkey.Registered ? "Ctrl + Alt + N · a new note from anywhere" : "Ctrl + Alt + N is in use by another app. Use New note here, or Ctrl + N inside a note.";
@@ -52,7 +79,7 @@ public sealed class ProductWindow : Window
         {
             if (!PrepareQuit()) e.Cancel = true;
         };
-        Closed += (_, _) => { _hotkey.Dispose(); _store.Dispose(); Application.Current.Exit(); };
+        Closed += (_, _) => { NootFX.NootFxService.Shared.Dispose(); _hotkey.Dispose(); _store.Dispose(); Application.Current.Exit(); };
         ((FrameworkElement)Content).Loaded += OnLoaded;
         RefreshCount();
     }
@@ -64,6 +91,9 @@ public sealed class ProductWindow : Window
         foreach (var record in _store.Document.Notes.Where(n => n.DeletedAt == null).ToArray()) Open(record, false);
         if (_store.RecoveryMessage != null) Notice(_store.RecoveryMessage, InfoBarSeverity.Warning);
         if (Environment.GetCommandLineArgs().Contains("--verify-product")) await VerifyAsync();
+#if DEBUG
+        if (Environment.GetCommandLineArgs().Contains("--verify-fx")) await VerifyFxAsync();
+#endif
     }
 
     public NoteWindow? CreateNote()
@@ -71,6 +101,11 @@ public sealed class ProductWindow : Window
         var area = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary).WorkArea;
         int offset = (_windows.Count % 7) * 26;
         var record = new NoteRecord { X = area.X + area.Width / 2 - 230 + offset, Y = area.Y + area.Height / 2 - 240 + offset };
+#if DEBUG
+        // Put genuine test notes against the lab's quiet backdrop for evidence.
+        if (Environment.GetCommandLineArgs().Contains("--fx-lab"))
+        { record.X = AppWindow.Position.X + 640; record.Y = AppWindow.Position.Y + 130; }
+#endif
         _store.Document.Notes.Add(record); _dirty = true;
         if (!SaveNow()) { _store.Document.Notes.Remove(record); return null; }
         return Open(record, true);
@@ -109,12 +144,15 @@ public sealed class ProductWindow : Window
             if (!_quitting && record.DeletedAt != null && _windows.TryGetValue(record.Id, out var current) && current == window)
                 window.Close();
         };
-        window.AppWindow.Closing += (_, e) =>
+        Windows.Foundation.TypedEventHandler<Microsoft.UI.Windowing.AppWindow, Microsoft.UI.Windowing.AppWindowClosingEventArgs> closing = (_, e) =>
         {
             if (_quitting) return;
             if (!Discard()) e.Cancel = true;
         };
-        window.Closed += (_, _) => { _windows.Remove(record.Id); RefreshCount(); };
+        window.AppWindow.Closing += closing;
+        Windows.Foundation.TypedEventHandler<object, WindowEventArgs>? closed = null;
+        closed = (_, _) => { window.Closed -= closed; window.AppWindow.Closing -= closing; _windows.Remove(record.Id); RefreshCount(); };
+        window.Closed += closed;
         window.AppWindow.Show();
         window.Activate();
         if (focus) window.FocusEditor();
@@ -207,7 +245,7 @@ public sealed class ProductWindow : Window
             UndoDiscard();
             Check(_windows[record.Id] == restored && record.DeletedAt == null, "Undo during discard reuses the existing window");
             restored.Discard(animate: true);
-            await Task.Delay(750);
+            await Task.Delay(1800);
             Check(record.DeletedAt != null && !_windows.ContainsKey(record.Id), "Discard after an interrupted discard closes exactly once");
             UndoDiscard();
             await Task.Delay(500);

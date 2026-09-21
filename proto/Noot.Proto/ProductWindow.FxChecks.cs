@@ -1,0 +1,116 @@
+#if DEBUG
+using System.Diagnostics;
+using System.Text.Json;
+using Noot_Proto.NootFX;
+
+namespace Noot_Proto;
+
+public sealed partial class ProductWindow
+{
+    // Exercises actual product windows, storage, capture, menu automation peer,
+    // cancellation and native D3D rendering. Always uses an isolated data folder.
+    private async Task VerifyFxAsync()
+    {
+        var checks = new List<string>(); var samples = new List<object>(); string? error = null;
+        var fx = NootFxService.Shared;
+        void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); checks.Add(message); }
+        async Task Until(Func<bool> condition, int milliseconds = 5000)
+        {
+            var watch = Stopwatch.StartNew();
+            while (!condition()) { if (watch.ElapsedMilliseconds > milliseconds) throw new TimeoutException("FX check timed out"); await Task.Delay(25); }
+        }
+        object Resources(int iteration)
+        {
+            using var process = Process.GetCurrentProcess();
+            return new { iteration, privateBytes = process.PrivateMemorySize64, workingSet = process.WorkingSet64,
+                handles = process.HandleCount, devices = fx.DeviceCreations, fx.Active, fx.Drawing, fx.TotalFrames };
+        }
+        try
+        {
+            Check(fx.DeviceCreations == 0 && !fx.Active, "Cold startup creates no D3D device");
+            using var process = Process.GetCurrentProcess();
+            await Task.Delay(3000);
+            var cpuBefore = process.TotalProcessorTime; long frameBefore = fx.TotalFrames;
+            await Task.Delay(1200);
+            samples.Add(new { stage = "cold idle 1200ms", cpuMs = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds });
+            var note = CreateNote()!; await Until(() => note.EditorLoaded);
+            note.SetTestContent("NootFX regression\nActual native ink / 21 September\n\nRemember the green notebook.", "mint", 360, 280);
+            await Task.Delay(400);
+            var record = note.Record!;
+            await note.InvokeMenuDiscardForCheckAsync();
+            await Until(() => !_windows.ContainsKey(record.Id));
+            Check(note.LastDiscardOutcome == "Animated" && note.LastDiscardFrames > 5, "Native menu discard captures the real note and renders D3D frames");
+            Check(record.DeletedAt != null && !fx.Active && !fx.Drawing, "Deletion persisted and renderer dormant");
+            UndoDiscard(); await Until(() => _windows.TryGetValue(record.Id, out var w) && w.EditorLoaded);
+            note = _windows[record.Id]; note.Discard(animate: true); UndoDiscard();
+            await Until(() => !fx.Active);
+            Check(record.DeletedAt == null && _windows[record.Id] == note && !note.IsDiscarding, "Undo during capture preserves the original editable window");
+            note.SetTestContent("Editing after cancellation works", "peach", 300, 320);
+            Check(record.Text == "Editing after cancellation works", "Editing still updates the record after cancellation");
+            // Isolate renderer/capture retention from WinUI window recreation.
+            bool retentionProbe = Environment.GetCommandLineArgs().Contains("--fx-retention-probe");
+            for (int i = 0; i < (retentionProbe ? 0 : 30); i++)
+            {
+                await note.PlayDiscardAsync();
+                if (i % 10 == 9)
+                {
+                    GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); await Task.Delay(200);
+                    samples.Add(new { stage = "same live note, after GC", iteration = i + 1, resources = Resources(i + 1) });
+                }
+            }
+            // Many ordinary notes must not create D3D devices or render callbacks.
+            int devices = fx.DeviceCreations;
+            for (int i = 0; i < 12; i++) CreateNote();
+            await Task.Delay(3000);
+            frameBefore = fx.TotalFrames; cpuBefore = process.TotalProcessorTime;
+            await Task.Delay(1200);
+            Check(fx.DeviceCreations == devices && fx.TotalFrames == frameBefore && !fx.Drawing, "13 ordinary notes share one dormant D3D service with zero FX frames during idle");
+            samples.Add(new { stage = "13 notes idle 1200ms", cpuMs = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds });
+            foreach (var extra in _windows.Values.Where(w => w.Record!.Id != record.Id).ToArray()) extra.Discard();
+            // Warm up JIT/WinUI allocations, then sample three equal batches. Do
+            // not force GC: this reflects the application's actual resource use.
+            var closedNotes = new List<WeakReference<NoteWindow>>();
+            for (int i = 0; i < (retentionProbe ? 10 : 40); i++)
+            {
+                if (record.DeletedAt != null) { UndoDiscard(); await Until(() => _windows.TryGetValue(record.Id, out var w) && w.EditorLoaded); }
+                note = _windows[record.Id]; note.Discard(animate: true);
+                await Until(() => !_windows.ContainsKey(record.Id));
+                closedNotes.Add(new WeakReference<NoteWindow>(note));
+                Check(note.LastDiscardOutcome == "Animated", $"Repeat {i + 1}: native effect completes");
+                if (i % 10 == 9)
+                {
+                    await Task.Delay(250); samples.Add(Resources(i + 1));
+                    // Separate managed/WinRT deferred collection from retained
+                    // native allocations; never run GC in production playback.
+                    GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
+                    await Task.Delay(250); samples.Add(new { stage = "after diagnostic full GC", iteration = i + 1, resources = Resources(i + 1), liveClosedNotes = closedNotes.Count(w => w.TryGetTarget(out _)) });
+                }
+            }
+            Check(closedNotes.Count(w => w.TryGetTarget(out _)) <= 2, "Closed note windows are collectible after repeated deletion");
+            // Faults are deliberate and remain separate from quality/perf data.
+            foreach (string failure in new[] { "initialization", "asset", "render" })
+            {
+                UndoDiscard(); await Until(() => _windows.TryGetValue(record.Id, out var w) && w.EditorLoaded);
+                NootFxService.InjectFailure = failure;
+                note = _windows[record.Id]; note.Discard(animate: true);
+                await Until(() => !_windows.ContainsKey(record.Id));
+                Check(record.DeletedAt != null && note.LastDiscardOutcome.StartsWith("Fallback:") && !fx.Drawing && !fx.Active,
+                    failure + " failure still deletes and releases active resources");
+                NootFxService.InjectFailure = null;
+            }
+            UndoDiscard(); await Until(() => _windows.TryGetValue(record.Id, out var w) && w.EditorLoaded);
+            note = _windows[record.Id]; note.Discard(animate: true);
+            await Until(() => !_windows.ContainsKey(record.Id));
+            Check(note.LastDiscardOutcome == "Animated", "Device and rendering recover after injected faults");
+            frameBefore = fx.TotalFrames; await Task.Delay(1200);
+            Check(fx.TotalFrames == frameBefore && !fx.Drawing && !fx.Active, "Final idle has no frame callbacks");
+            samples.Add(Resources(41));
+        }
+        catch (Exception exception) { error = exception.ToString(); }
+        finally { NootFxService.InjectFailure = null; }
+        File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "fx-verification.json"),
+            JsonSerializer.Serialize(new { passed = error == null, checks, samples, adapter = fx.Adapter, error }, new JsonSerializerOptions { WriteIndented = true }));
+        if (!Environment.GetCommandLineArgs().Contains("--inspect-note") && PrepareQuit()) Close();
+    }
+}
+#endif

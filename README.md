@@ -2,7 +2,7 @@
 
 Beautiful little reminders that stay where you put them. C# / WinUI 3 / Windows
 Composition, with native text editing and tactile paper. No browser runtime,
-accounts, cloud services or added package dependencies.
+accounts or cloud services. Native deletion graphics use Vortice Direct3D 11.
 
 ## Run the everyday app
 
@@ -11,7 +11,7 @@ accounts, cloud services or added package dependencies.
 ```
 
 Use `-Build` to rebuild after closing this build. Requires .NET 9 and the Windows
-build tools. Executable: `proto/artifacts/paper-polish-checked/Noot.Proto.exe`.
+build tools. Executable: `proto/artifacts/nootfx-checked/Noot.Proto.exe`.
 
 - **New note**, or **Ctrl+Alt+N** from anywhere while Noot is running. New notes
   focus the editor immediately; typing never waits for an animation.
@@ -50,6 +50,26 @@ Discarded notes remain in the local file and can be restored, including after a
 restart. There is no automatic expiry or permanent-delete UI in this build.
 If a monitor is missing, startup placement is clamped to a nearby work area so
 the paper remains reachable. Full mixed-DPI and monitor docking tests are pending.
+
+## Native NootFX deletion slice
+
+Floating notes now use a shared, lazy D3D11 renderer for animated menu discard:
+the actual XAML note is captured, a prepared Houdini paper bake deforms it on the
+GPU, and a short throw finishes the discard. Normal editing and the existing
+pickup/peel renderer remain native WinUI. Keyboard discard and reduced motion
+remain immediate. Graphics failures fall back to the saved, recoverable discard.
+
+```powershell
+.\proto\run.ps1 -Build -FxLab     # DEBUG-only, isolated notes, slow/scrub controls
+.\proto\run.ps1 -VerifyFx        # DEBUG-only native lifecycle/performance checks
+dotnet run --project proto/Noot.FxChecks/Noot.FxChecks.csproj
+```
+
+The lab's Delete latest test note command uses the ordinary product discard
+path. Hold deformation and the slider inspect the bake; uncheck Hold to finish.
+The hold automatically ends after 60 seconds. None of these controls appears in
+the everyday app or Release builds. See [NootFX implementation and verification](proto/NOOTFX.md)
+for architecture, provenance, measured results and outstanding verification.
 
 ## Paper comparison bench
 
