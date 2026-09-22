@@ -8,7 +8,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 root = Path(sys.argv[1])
-seeds = json.loads((Path(__file__).resolve().parents[2] / 'proto/fx-golden-seeds.json').read_text())['seeds']
+seeds = json.loads((Path(__file__).resolve().parents[2] / 'tests/fixtures/fx-golden-seeds.json').read_text())['seeds']
 poses = ['0', '0.2', '0.4', '0.6', '0.8', '1']
 
 def held(file, size=250):

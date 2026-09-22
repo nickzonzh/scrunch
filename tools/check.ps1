@@ -3,15 +3,14 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 Push-Location $root
 try {
-    foreach ($name in @('Storage', 'Geometry', 'Fx', 'Tray')) {
-        $project = "proto/Scrunch.$name`Checks"
-        $restoreArgs = @('restore', $project)
-        if ($Locked) { $restoreArgs += '--locked-mode' }
-        & dotnet @restoreArgs
-        if ($LASTEXITCODE) { throw "$name restore failed." }
-        dotnet run --project $project -c Release --no-restore
-        if ($LASTEXITCODE) { throw "$name checks failed." }
-    }
+    $restoreArgs = @('restore', 'tests/Scrunch.Tests/Scrunch.Tests.csproj')
+    if ($Locked) { $restoreArgs += '--locked-mode' }
+    & dotnet @restoreArgs
+    if ($LASTEXITCODE) { throw 'Test restore failed.' }
+    dotnet test tests/Scrunch.Tests/Scrunch.Tests.csproj -c Release --no-restore --logger trx
+    if ($LASTEXITCODE) { throw 'Headless tests failed.' }
     node tools/scrunchfx-assets/author.mjs --check
     if ($LASTEXITCODE) { throw 'Prepared ScrunchFX assets do not match their generator.' }
+    & "$PSScriptRoot/compile-shaders.ps1" -Check
+    if ($LASTEXITCODE) { throw 'Compiled ScrunchFX shaders do not match Paper.hlsl.' }
 } finally { Pop-Location }

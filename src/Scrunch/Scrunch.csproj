@@ -1,0 +1,144 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Scrunch</RootNamespace>
+    <AssemblyName>Scrunch</AssemblyName>
+    <Product>Scrunch</Product>
+    <Title>Native desktop notes with tactile paper.</Title>
+    <Description>Native desktop notes with tactile paper.</Description>
+    <Company></Company>
+    <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
+    <SelfContained>true</SelfContained>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Scrunch.ico</ApplicationIcon>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <PublishProfile Condition="Exists('Properties\PublishProfiles\win-$(Platform).pubxml')">win-$(Platform).pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\Scrunch.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="Assets\Fonts\InterVariable.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Fonts\DrawablyPen.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Fonts\*.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\ShadowPaper.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\GrainTile.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\ScrunchFX\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+    <ProjectReference Include="..\Scrunch.Core\Scrunch.Core.csproj" />
+  </ItemGroup>
+
+  <!--
+    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
+    Tools extension to be activated for this project even if the Windows App SDK Nuget
+    package has not yet been restored.
+  -->
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.Windows.SDK.BuildTools.WinApp adds first-class support for
+    `dotnet run` on packaged WinUI apps: it hooks the .NET CLI Run target to
+    register a debug identity via the winapp CLI and launch the app with
+    package identity (AUMID).
+    Set <EnableWinAppRunSupport>false</EnableWinAppRunSupport> in a
+    <PropertyGroup> above to opt out.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <!-- Component versions from Windows App SDK 1.8.6. Keep self-contained
+         deployment without pulling in the umbrella package's AI/ML/widgets. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="1.8.260224000" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" Version="1.8.25122902" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.20250829.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.6.1" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageReference Include="Vortice.DirectComposition" Version="3.8.3" />
+  </ItemGroup>
+
+  <!--
+    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
+    Explorer "Package and Publish" context menu entry to be enabled for this project even if
+    the Windows App SDK Nuget package has not yet been restored.
+  -->
+  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
+
+  <!-- Publish Properties -->
+  <PropertyGroup>
+    <!-- No ReadyToRun: it duplicates managed IL as native code (docs/PACKAGE-SIZE.md). -->
+    <PublishReadyToRun>False</PublishReadyToRun>
+    <!-- The CsWinRT optimizer generates WinRT vtables at build time for every class
+         that crosses the ABI; those classes must be partial (CsWinRT1028). -->
+    <CsWinRTAotOptimizerEnabled>true</CsWinRTAotOptimizerEnabled>
+    <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Partial trimming removes unused .NET and projection IL. Only assemblies that
+         opt in (the BCL, CsWinRT, WinUI projections, Vortice, Scrunch.Core) are trimmed.
+         The shipping notebook JSON is source-generated, so reflection serialization
+         stays off. Debug keeps reflection for the Compile-Removed diagnostics writers. -->
+    <PublishTrimmed>True</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Debug-only verification surfaces. This list is the only mechanism; the
+         files carry no #if DEBUG wrapper. -->
+    <Compile Remove="MainPage.xaml.cs;MainWindow.xaml.cs;ProductWindow.ShellChecks.cs;ProductWindow.FxChecks.cs;ProductWindow.TrayChecks.cs" />
+    <Page Remove="MainPage.xaml;MainWindow.xaml" />
+  </ItemGroup>
+  <!-- Debugger and crash-dump support binaries are never used by a shipping
+       unpackaged app; crashes are logged by App.UnhandledException instead. -->
+  <Target Name="RemoveScrunchDiagnosticsNatives" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::new('%(Filename)%(Extension)').StartsWith('mscordaccore')) or '%(Filename)%(Extension)' == 'mscordbi.dll' or $([System.String]::new('%(Filename)%(Extension)').StartsWith('Microsoft.DiaSymReader.Native')) or '%(Filename)%(Extension)' == 'createdump.exe'" />
+    </ItemGroup>
+  </Target>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <!-- Unpackaged test output needs the compiled XAML beside the executable,
+       including when a separate output directory is selected. -->
+  <Target Name="CopyScrunchCompiledXaml" AfterTargets="Build">
+    <ItemGroup>
+      <ScrunchCompiledXaml Include="$(IntermediateOutputPath)*.xbf" />
+      <ScrunchCompiledXaml Remove="$(IntermediateOutputPath)MainPage.xbf;$(IntermediateOutputPath)MainWindow.xbf" Condition="'$(Configuration)' == 'Release'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ScrunchCompiledXaml)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="PublishScrunchCompiledXaml" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(ScrunchCompiledXaml)">
+        <RelativePath>%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

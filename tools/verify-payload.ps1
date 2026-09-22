@@ -4,15 +4,20 @@ $required = @('Scrunch.exe','Scrunch.dll','Scrunch.runtimeconfig.json','Microsof
     'Scrunch.pri','App.xbf','ShellView.xbf','NoteView.xbf','NoteWindow.xbf','Assets/Scrunch.ico','Assets/Fonts/InterVariable.ttf','Assets/Fonts/DrawablyPen.ttf',
     'Assets/Fonts/Inter-LICENSE.txt','Assets/Fonts/Drawably-LICENSE.txt',
     'Assets/ScrunchFX/corner-crush.nfx','Assets/ScrunchFX/side-scrunch.nfx','Assets/ScrunchFX/centre-collapse.nfx',
-    'ScrunchFX/Paper.hlsl','LICENSE','THIRD_PARTY_NOTICES.md','DEPENDENCY_NOTICES.txt')
+    'Assets/ScrunchFX/Shaders/VS.cso','Assets/ScrunchFX/Shaders/PS.cso',
+    'Assets/ScrunchFX/Shaders/VSShadow.cso','Assets/ScrunchFX/Shaders/PSShadow.cso',
+    'Assets/ScrunchFX/Shaders/VSLight.cso',
+    'Assets/ScrunchFX/Shaders/VSComposite.cso','Assets/ScrunchFX/Shaders/PSComposite.cso',
+    'LICENSE','THIRD_PARTY_NOTICES.md','DEPENDENCY_NOTICES.txt')
 foreach ($file in $required) { if (!(Test-Path -LiteralPath (Join-Path $Directory $file))) { throw "Missing shipping file: $file" } }
 $files = @(Get-ChildItem -LiteralPath $Directory -File -Recurse)
-$forbidden = $files | Where-Object { $_.Name -match '(?i)(verification|product-check|startup-error|\.pdb$|\.log$|\.dmp$|\.pfx$|\.p12$|\.key$|\.cs$|\.ps1$|\.mjs$|\.mp4$|notes\.json|Caveat|Kalam|MainPage|MainWindow)' }
+$forbidden = $files | Where-Object { $_.Name -match '(?i)(verification|product-check|startup-error|\.pdb$|\.log$|\.dmp$|\.pfx$|\.p12$|\.key$|\.cs$|\.ps1$|\.mjs$|\.mp4$|notes\.json|Caveat|Kalam|MainPage|MainWindow|\.hlsl$)' }
 if ($forbidden) { throw ('Development files in payload: ' + ($forbidden.Name -join ', ')) }
-# Component-only SDK deployment must not silently regain the umbrella runtime.
-$unused = $files | Where-Object Name -Match '^(onnxruntime|DirectML|Microsoft\.Windows\.(AI|Widgets))'
+# Component-only SDK deployment must not silently regain the umbrella runtime,
+# and the publish target must keep dropping the debugger-only runtime binaries.
+$unused = $files | Where-Object Name -Match '^(onnxruntime|DirectML|Microsoft\.Windows\.(AI|Widgets)|mscordaccore|mscordbi|Microsoft\.DiaSymReader|createdump)'
 if ($unused) { throw ('Unused SDK components in payload: ' + ($unused.Name -join ', ')) }
-if (($files | Measure-Object Length -Sum).Sum -gt 200MB) { throw 'Payload exceeds the 200 MiB size budget. Review dependency or publish changes.' }
+if (($files | Measure-Object Length -Sum).Sum -gt 90MB) { throw 'Payload exceeds the 90 MiB size budget. Review dependency or publish changes (docs/PACKAGE-SIZE.md).' }
 # Inspect owned managed binaries as both UTF-8 and UTF-16: a normal text search
 # alone would miss .NET user strings. Vendor debug/source paths are not authored
 # Scrunch paths and are left intact in signed redistributables.

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Scrunch.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Scrunch.Core/Scrunch.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Golden seed fixture shared with the native UI capture scripts. -->
+    <Content Include="../fixtures/fx-golden-seeds.json" Link="fixtures/fx-golden-seeds.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../src/Scrunch/Assets/ScrunchFX/*.nfx" Link="Assets/ScrunchFX/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

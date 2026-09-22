@@ -1,11 +1,12 @@
 **/bin/
 **/obj/
 **/__pycache__/
-proto/artifacts/
+/archive/
 /artifacts/
 /tools/.cache/
 tools/scrunchfx-assets/node_modules/
 *.log
+*.trx
 
 # Local IDE state and diagnostics
 .vs/

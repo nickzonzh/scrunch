@@ -1,7 +1,7 @@
 param([Parameter(Mandatory)][string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
-$assets = Get-Content (Join-Path $root 'proto/Scrunch/obj/project.assets.json') -Raw | ConvertFrom-Json
+$assets = Get-Content (Join-Path $root 'src/Scrunch/obj/project.assets.json') -Raw | ConvertFrom-Json
 $packages = $assets.packageFolders.PSObject.Properties.Name | Select-Object -First 1
 $builder = [Text.StringBuilder]::new()
 [void]$builder.AppendLine("Scrunch third-party dependency licences`nGenerated from the restored dependency graph. Build-only packages are excluded.`n")
@@ -14,7 +14,7 @@ function Append-License([string]$Label, [string]$Path) {
     else { [void]$builder.AppendLine("Same full licence/notice text reproduced above (SHA256 $hash).") }
 }
 foreach ($library in $assets.libraries.PSObject.Properties | Sort-Object Name) {
-    if ($library.Name -match '^Microsoft.Windows.SDK.BuildTools') { continue }
+    if ($library.Name -match '^Microsoft.Windows.SDK.BuildTools' -or $library.Value.type -eq 'project') { continue }
     $directory = Join-Path $packages $library.Value.path
     $notices = @(Get-ChildItem -LiteralPath $directory -File | Where-Object Name -Match 'license|notice|third')
     if ($notices.Count) {
@@ -24,7 +24,7 @@ foreach ($library in $assets.libraries.PSObject.Properties | Sort-Object Name) {
     } elseif ($library.Name -like 'Vortice.Mathematics/*') {
         Append-License $library.Name (Join-Path $root 'docs/licenses/Vortice.Mathematics-MIT.txt')
     } elseif ($library.Name -like 'Vortice.*') {
-        Append-License $library.Name (Join-Path $root 'proto/Scrunch/Assets/ScrunchFX/Vortice-LICENSE.txt')
+        Append-License $library.Name (Join-Path $root 'src/Scrunch/Assets/ScrunchFX/Vortice-LICENSE.txt')
     } else { throw "Unreviewed dependency licence: $($library.Name)" }
 }
 $runtime = Get-Content (Join-Path $OutputDirectory 'Scrunch.runtimeconfig.json') -Raw | ConvertFrom-Json

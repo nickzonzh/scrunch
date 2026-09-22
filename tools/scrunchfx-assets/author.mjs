@@ -5,12 +5,45 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../proto/Scrunch/Assets/ScrunchFX');
+const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/Scrunch/Assets/ScrunchFX');
 const check = process.argv.includes('--check');
 function write(name,bytes) {
   const file=path.join(out,name);
   if(check) { if(!fs.readFileSync(file).equals(Buffer.from(bytes))) throw new Error('Non-reproducible asset: '+name); }
   else fs.writeFileSync(file,bytes);
+}
+// NFX2 stores samples as IEEE binary16. Math.fround first so the engine and the
+// fallback converter round one float32 value once: rounding a double twice can
+// disagree by a bit, and the assets must stay byte-reproducible on any host.
+const halfView = typeof Float16Array === 'function' ? new Float16Array(1) : null;
+const halfBits = halfView ? new Uint16Array(halfView.buffer) : null;
+const single = new Float32Array(1), singleBits = new Uint32Array(single.buffer);
+function encodeHalf(value) {
+  single[0]=value; const x=singleBits[0];
+  const sign=(x>>>16)&0x8000, exponent=(x>>>23)&0xff;
+  let mantissa=x&0x7fffff;
+  if(exponent===0xff) return sign|0x7c00|(mantissa?0x200:0); // infinity or quiet NaN
+  let e=exponent-112; // drop the 127 bias, add 15
+  if(e>=0x1f) return sign|0x7c00;
+  if(e<=0) { // subnormal half or zero, round to nearest even
+    if(e<-11) return sign;
+    if(exponent!==0) mantissa|=0x800000;
+    const shift=14-e, m=mantissa>>>shift, rest=mantissa&((1<<shift)-1), tie=1<<(shift-1);
+    return sign|(rest>tie||(rest===tie&&(m&1))?m+1:m);
+  }
+  let m=mantissa>>>13; const rest=mantissa&0x1fff;
+  if(rest>0x1000||(rest===0x1000&&(m&1))) { if(++m===0x400) { m=0; if(++e>=0x1f) return sign|0x7c00; } }
+  return sign|(e<<10)|m;
+}
+function half(value) {
+  const rounded=Math.fround(value);
+  if(!halfBits) return encodeHalf(rounded);
+  halfView[0]=rounded; return halfBits[0];
+}
+if(halfBits) for(let i=0;i<4096;i++) { // fail loudly instead of emitting other bytes
+  const v=Math.fround(Math.sin(i*.37)*Math.pow(2,(i%44)-22));
+  halfView[0]=v;
+  if(halfBits[0]!==encodeHalf(v)) throw new Error('Float16Array disagrees with the fallback half converter');
 }
 const side = 25, frames = 61, count = side * side;
 const smooth = x => { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); };
@@ -78,11 +111,12 @@ for(let t=0;t<indices.length;t+=3) for(let k=0;k<3;k++) {
 }
 const report={generator:'Scrunch staged oblique hinge folds with offline edge projection v1',
   generatorSha256:crypto.createHash('sha256').update(fs.readFileSync(fileURLToPath(import.meta.url),'utf8').replace(/\r\n/g,'\n')).digest('hex'),
-  format:'NFX1',side,frames,vertices:count,triangles:indices.length/3,
+  format:'NFX2',sampleType:'float16',sampleLayout:'per frame, per vertex: position xyz then normal xyz',
+  side,frames,vertices:count,triangles:indices.length/3,
   panelJitter:.32,projectionIterations:90,guideWeight:.035,edgeCorrection:.48,
   pressure:{onset:.38,xyz:[.59,.61,.57]},families:[]};
 for(const [name,folds] of Object.entries(families)) {
-  const data=new Float32Array(count*frames*8); let finalBounds;
+  const data=new Uint16Array(count*frames*6); let finalBounds;
   let previous=Array.from({length:count},(_,i)=>[uv[i*2]-.5,uv[i*2+1]-.5,0]);
   for(let f=0;f<frames;f++) {
     const progress=f/(frames-1);
@@ -128,10 +162,13 @@ for(const [name,folds] of Object.entries(families)) {
       const [a,b,c]=indices.slice(t,t+3),n=cross(sub(positions[b],positions[a]),sub(positions[c],positions[a]));
       for(const v of [a,b,c]) for(let k=0;k<3;k++) normals[v][k]+=n[k];
     }
-    for(let i=0;i<count;i++) data.set([...positions[i],0,...unit(normals[i]),0],(f*count+i)*8);
+    for(let i=0;i<count;i++) {
+      const p=positions[i],n=unit(normals[i]),o=(f*count+i)*6;
+      for(let k=0;k<3;k++) { data[o+k]=half(p[k]); data[o+3+k]=half(n[k]); }
+    }
     if(f===frames-1) finalBounds=[0,1,2].map(k=>Math.max(...positions.map(p=>p[k]))-Math.min(...positions.map(p=>p[k])));
   }
-  const header=Buffer.alloc(16);header.write('NFX1');header.writeUInt32LE(count,4);header.writeUInt32LE(frames,8);header.writeUInt32LE(indices.length,12);
+  const header=Buffer.alloc(16);header.write('NFX2');header.writeUInt32LE(count,4);header.writeUInt32LE(frames,8);header.writeUInt32LE(indices.length,12);
   const bytes=Buffer.concat([header,Buffer.from(new Float32Array(uv).buffer),Buffer.from(new Uint32Array(indices).buffer),Buffer.from(data.buffer)]);
   write(name+'.nfx',bytes);
   report.families.push({name,folds,bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),finalBounds});

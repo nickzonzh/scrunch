@@ -3,6 +3,12 @@
 Tested on 22 September 2026, Windows 10 x64 build 19045, NVIDIA RTX 3060 Ti.
 The repository remains private; no release has been published.
 
+> **Superseded packaging.** This record covers the 180 MB component-SDK build
+> (`ee70395`). The current trimmed packaging (see [PACKAGE-SIZE.md](PACKAGE-SIZE.md))
+> has passed the headless gate, the portable ZIP check, the physical menu discard and
+> the tray callback suite, but the installer lifecycle, sign-in startup and uninstall
+> acceptance below must be repeated against the new artifacts before publishing.
+
 ## Acceptance status
 
 The smaller self-contained installer and ZIP pass local x64 acceptance. The
