@@ -14,8 +14,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Scrunch.ico</ApplicationIcon>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-    <Platforms>x64;ARM64</Platforms>
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <!-- x64 only: there is no ARM64 hardware to accept a build on. -->
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <PublishProfile Condition="Exists('Properties\PublishProfiles\win-$(Platform).pubxml')">win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
@@ -25,6 +26,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Set for every configuration so both restore the same ILLink pack; a Debug
+         build otherwise rewrites the lockfile and breaks the Release locked restore.
+         Debug is never trimmed and its diagnostics writers use reflection JSON on
+         purpose, so their IL2026 is noise there. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <NoWarn Condition="'$(Configuration)' == 'Debug'">$(NoWarn);IL2026</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -104,14 +111,17 @@
          stays off. Debug keeps reflection for the Compile-Removed diagnostics writers. -->
     <PublishTrimmed>True</PublishTrimmed>
     <TrimMode>partial</TrimMode>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <!-- Trimming rewrites the runtime pack's assemblies as IL-only, discarding their
+         precompiled code and moving that work to the JIT at every launch (measured:
+         shell 563 ms vs 444 ms untrimmed). Crossgen2 puts native code back for what
+         survived trimming: 372 ms to the shell for about 8 MB. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <!-- Debug-only verification surfaces. This list is the only mechanism; the
          files carry no #if DEBUG wrapper. -->
-    <Compile Remove="MainPage.xaml.cs;MainWindow.xaml.cs;ProductWindow.ShellChecks.cs;ProductWindow.FxChecks.cs;ProductWindow.TrayChecks.cs" />
-    <Page Remove="MainPage.xaml;MainWindow.xaml" />
+    <Compile Remove="ProductWindow.ShellChecks.cs;ProductWindow.FxChecks.cs;ProductWindow.TrayChecks.cs" />
   </ItemGroup>
   <!-- Debugger and crash-dump support binaries are never used by a shipping
        unpackaged app; crashes are logged by App.UnhandledException instead. -->
@@ -129,7 +139,6 @@
   <Target Name="CopyScrunchCompiledXaml" AfterTargets="Build">
     <ItemGroup>
       <ScrunchCompiledXaml Include="$(IntermediateOutputPath)*.xbf" />
-      <ScrunchCompiledXaml Remove="$(IntermediateOutputPath)MainPage.xbf;$(IntermediateOutputPath)MainWindow.xbf" Condition="'$(Configuration)' == 'Release'" />
     </ItemGroup>
     <Copy SourceFiles="@(ScrunchCompiledXaml)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>

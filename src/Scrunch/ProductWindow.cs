@@ -341,7 +341,7 @@ public sealed partial class ProductWindow : Window
 
     private NoteWindow Open(NoteRecord record, bool focus)
     {
-        var window = new NoteWindow(record: record);
+        var window = new NoteWindow(record);
         window.SetTypography(_session.Document.Typography);
         _windows.Add(record.Id, window);
         window.RecordChanged += (_, _) => { if (!_quitting && _session.Apply(record.Id, window.Capture())) ScheduleSave(); };

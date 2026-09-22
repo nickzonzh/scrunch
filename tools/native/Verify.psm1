@@ -24,9 +24,13 @@ function Get-WinAppCli {
 
 # Throwing wrapper around `winapp ui`. Arguments are passed through verbatim so
 # call sites read exactly like the CLI: Invoke-Ui invoke Quit -w $main
+# The CLI writes UTF-8; a non-interactive host (CI, agents) decodes native output
+# with the OEM code page, which silently breaks text checks on characters like "·".
 function Invoke-Ui {
     $cli = Get-WinAppCli
-    $result = & $cli ui @args
+    $previous = [Console]::OutputEncoding
+    try { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); $result = & $cli ui @args }
+    finally { [Console]::OutputEncoding = $previous }
     if ($LASTEXITCODE -ne 0) { throw "Native UI failed: $args`n$result" }
     return $result
 }

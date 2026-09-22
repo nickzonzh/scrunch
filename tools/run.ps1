@@ -1,4 +1,4 @@
-param([switch]$Build, [switch]$Verify, [switch]$Bench, [switch]$VerifyProduct, [switch]$VerifyFx, [switch]$FxLab, [switch]$ShellPreview, [switch]$VerifyTray)
+param([switch]$Build, [switch]$VerifyProduct, [switch]$VerifyFx, [switch]$FxLab, [switch]$ShellPreview, [switch]$VerifyTray)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
 $scrunchOutput = Join-Path $root 'artifacts/debug'
@@ -13,13 +13,11 @@ if ($Build -or !(Test-Path -LiteralPath $scrunchExecutable)) {
 $scrunchWinApp = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
 if (!(Test-Path -LiteralPath $scrunchWinApp)) { throw 'Restore Scrunch first; its existing WinApp SDK package supplies the native run tool.' }
 $scrunchArguments = @('run', (Join-Path $root 'src/Scrunch/Scrunch.csproj'), '--arch', 'x64', '--no-build', '-p', "OutDir=$scrunchOutput\", '--detach')
-if ($Verify) { $scrunchArguments += @('--args', '--verify') }
-elseif ($VerifyTray) { $scrunchArguments += @('--args', '--tray-check --verify-tray') }
+if ($VerifyTray) { $scrunchArguments += @('--args', '--tray-check --verify-tray') }
 elseif ($VerifyProduct) { $scrunchArguments += @('--args', '--verify-product') }
 elseif ($VerifyFx) { $scrunchArguments += @('--args', '--verify-fx') }
 elseif ($FxLab) { $scrunchArguments += @('--args', '--fx-lab') }
 elseif ($ShellPreview) { $scrunchArguments += @('--args', '--shell-preview') }
-elseif ($Bench) { $scrunchArguments += @('--args', '--bench') }
 & $scrunchWinApp @scrunchArguments
 if ($LASTEXITCODE -ne 0) { throw 'Scrunch launch failed. See WinApp output above.' }
 Write-Host "Opened $scrunchExecutable"

@@ -3,8 +3,8 @@
 ## Build and distribution
 
 Scrunch remains an unpackaged WinUI 3 application. Both .NET and Windows App SDK
-are self-contained; no shared runtime, MSIX registration or signing certificate is
-required. Release trims partially and disables ReadyToRun and single-file bundling;
+are self-contained; no shared runtime or MSIX registration is required. Authenticode
+signing is optional and described under [Signing](#signing). Release trims partially and disables ReadyToRun and single-file bundling;
 Debug is untrimmed and keeps reflection for the diagnostics writers. Release uses
 the WinUI/DWrite SDK component packages rather than the full umbrella runtime.
 See [package size](PACKAGE-SIZE.md) for measured savings and startup tradeoffs.
@@ -135,6 +135,42 @@ right-click its top edge, choose Discard note, observe the crumple finish, then 
 and confirm the original text returns. Quit and uninstall the test copy afterwards.
 Never substitute personal data for a blocked desktop automation test.
 
+## Signing
+
+`tools/sign.ps1` signs whatever `SCRUNCH_SIGN_ARGS` describes: the `signtool sign`
+arguments for the certificate source (Azure Trusted Signing dlib, a PFX, an HSM).
+`tools/release.ps1` signs `Scrunch.exe` before hashing it into the ZIP and passes the
+same hook to Inno Setup, which signs `Setup.exe` and the embedded uninstaller
+(`SignedUninstaller`). With the variable unset the release is produced unsigned and
+the script says so; `-RequireSigning` turns that into a failure.
+
+The intended source is Azure Trusted Signing (Basic tier, monthly fee, no
+certificate to store). One-time provisioning is a guided walk-through:
+
+```bash
+./tools/setup-signing.sh
+```
+
+It creates the account, identity validation, Public Trust certificate profile, an
+Entra app registration with a GitHub federated credential bound to the `release`
+environment, the role assignment, and writes the `AZURE_*` repository secrets plus
+`TRUSTED_SIGNING_*` variables the workflow reads. Identity validation is reviewed by
+Microsoft and can take days; the wizard remembers values between runs.
+
+CI signs only `v*` tag builds, through the `release` environment and OIDC (no stored
+secret). Locally, after `az login` with an account holding the *Trusted Signing
+Certificate Profile Signer* role:
+
+```powershell
+. ./tools/trusted-signing.ps1 -Endpoint https://<region>.codesigning.azure.net -Account <account> -Profile <profile>
+./tools/release.ps1 -RequireSigning
+```
+
+`tools/trusted-signing.ps1` pins the `Microsoft.Trusted.Signing.Client` package by
+SHA-256 under the ignored `tools/.cache` and sets `SCRUNCH_SIGN_ARGS` for the session.
+Signed artifacts change the SmartScreen story from "unknown publisher" to the
+validated name; reputation still accrues over downloads.
+
 ## Publishing
 
 1. Review `docs/RELEASE-VERIFICATION.md` and complete every outstanding release gate.
@@ -172,7 +208,9 @@ gh repo edit nickzonzh/scrunch --visibility public --accept-visibility-change-co
 gh release edit v0.1.0 --repo nickzonzh/scrunch --draft=false
 ```
 
-Only x64 is released. ARM64 remains an unverified source target; no ARM64 or x86
-artifact is advertised. See Microsoft's [deployment guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/deploy-overview)
+Only x64 is built and released. The project declares no ARM64 platform: there is
+no ARM64 hardware to accept a build on, and Windows on ARM cannot be emulated on an
+x64 host well enough to stand in for acceptance. Reintroduce the platform together
+with real hardware. See Microsoft's [deployment guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/deploy-overview)
 and Inno Setup's [non-admin mode](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm)
 and [application mutex](https://jrsoftware.org/ishelp/topic_setup_appmutex.htm).

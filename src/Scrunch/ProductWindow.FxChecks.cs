@@ -182,7 +182,7 @@ public sealed partial class ProductWindow
             var note = CreateNote()!; await Until(() => note.EditorLoaded);
             note.SetTestContent("ScrunchFX regression\nActual native ink / 21 September\n\nRemember the green notebook.", "mint", 360, 280);
             await Task.Delay(400);
-            var record = note.Record!;
+            var record = note.Record;
             samples.Add(new { stage = "native display", rasterScale = note.RasterScaleForCheck,
                 displays = Microsoft.UI.Windowing.DisplayArea.FindAll().Count });
             await note.InvokeMenuDiscardForCheckAsync();
@@ -238,7 +238,7 @@ public sealed partial class ProductWindow
             await Task.Delay(1200);
             Check(fx.DeviceCreations == devices && fx.TotalFrames == frameBefore && !fx.Drawing, "13 ordinary notes share one dormant D3D service with zero FX frames during idle");
             samples.Add(new { stage = "13 notes idle 1200ms", cpuMs = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds });
-            foreach (var extra in _windows.Values.Where(w => w.Record!.Id != record.Id).ToArray()) extra.Discard();
+            foreach (var extra in _windows.Values.Where(w => w.Record.Id != record.Id).ToArray()) extra.Discard();
             // Warm up JIT/WinUI allocations, then sample three equal batches. Do
             // not force GC: this reflects the application's actual resource use.
             var closedNotes = new List<WeakReference<NoteWindow>>();

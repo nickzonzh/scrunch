@@ -22,7 +22,10 @@ namespace Scrunch;
 /// </summary>
 public partial class App : Application
 {
-    private Window? _window;
+    private ProductWindow? _window;
+    // The notebook this process actually opened; isolated check runs must not
+    // drop crash reports into the everyday data directory.
+    private string? _notebookDirectory;
     
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -38,11 +41,11 @@ public partial class App : Application
         InitializeComponent();
     }
 
-    private static void LogCrash(string? detail, string message)
+    private void LogCrash(string? detail, string message)
     {
         try
         {
-            string directory = AppPaths.DataDirectory;
+            string directory = _notebookDirectory ?? AppPaths.DataDirectory;
             System.IO.Directory.CreateDirectory(directory);
             string path = System.IO.Path.Combine(directory, "crash.log");
             // Keep the newest crashes only; an unattended loop must not grow a log forever.
@@ -58,44 +61,35 @@ public partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         var arguments = Environment.GetCommandLineArgs();
-#if DEBUG
-        if (arguments.Contains("--bench") || arguments.Contains("--verify")) _window = new MainWindow();
-        else
-#endif
+        try
         {
-            try
-            {
-                bool isolated = false;
+            bool isolated = false;
 #if DEBUG
-                isolated = arguments.Contains("--verify-product");
-                isolated |= arguments.Contains("--fx-lab") || arguments.Contains("--verify-fx") || arguments.Contains("--shell-preview");
+            isolated = arguments.Contains("--verify-product");
+            isolated |= arguments.Contains("--fx-lab") || arguments.Contains("--verify-fx") || arguments.Contains("--shell-preview");
 #endif
-                var directory = isolated
-                    ? System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-" + Guid.NewGuid().ToString("N"))
-                    : AppPaths.DataDirectory;
+            var directory = isolated
+                ? System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-" + Guid.NewGuid().ToString("N"))
+                : AppPaths.DataDirectory;
 #if DEBUG
-                // Repeatable native UI/restart checks without touching everyday notes.
-                if (arguments.Contains("--shell-preview")) directory = System.IO.Path.Combine(AppContext.BaseDirectory,
-                    arguments.Contains("--visual-fixture") ? "product-check-shell-visual" : "product-check-shell-preview");
-                if (arguments.Contains("--tray-check")) directory = System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-tray");
+            // Repeatable native UI/restart checks without touching everyday notes.
+            if (arguments.Contains("--shell-preview")) directory = System.IO.Path.Combine(AppContext.BaseDirectory,
+                arguments.Contains("--visual-fixture") ? "product-check-shell-visual" : "product-check-shell-preview");
+            if (arguments.Contains("--tray-check")) directory = System.IO.Path.Combine(AppContext.BaseDirectory, "product-check-tray");
 #endif
-                _window = new ProductWindow(new NoteStore(directory));
-            }
-            catch (Exception error)
-            {
-#if DEBUG
-                System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "startup-error.txt"), error.ToString());
-#endif
-                MessageBox(IntPtr.Zero, "Scrunch could not open your notes. If Scrunch is already running, use its window or Ctrl + Alt + N. Otherwise check access to your local notes folder. Your saved files have not been replaced.\n\n" + error.Message, "Scrunch", 0x10);
-                Exit(); return;
-            }
+            _notebookDirectory = directory;
+            _window = new ProductWindow(new NoteStore(directory));
         }
-        if (_window is ProductWindow product)
+        catch (Exception error)
         {
-            product.Start(arguments.Contains("--startup"));
-            Program.Ready(() => product.ShowShell(fromTray: false));
+#if DEBUG
+            System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "startup-error.txt"), error.ToString());
+#endif
+            MessageBox(IntPtr.Zero, "Scrunch could not open your notes. If Scrunch is already running, use its window or Ctrl + Alt + N. Otherwise check access to your local notes folder. Your saved files have not been replaced.\n\n" + error.Message, "Scrunch", 0x10);
+            Exit(); return;
         }
-        else { _window.AppWindow.Show(); _window.Activate(); }
+        _window.Start(arguments.Contains("--startup"));
+        Program.Ready(() => _window.ShowShell(fromTray: false));
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
