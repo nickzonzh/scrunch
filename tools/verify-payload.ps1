@@ -9,6 +9,10 @@ foreach ($file in $required) { if (!(Test-Path -LiteralPath (Join-Path $Director
 $files = @(Get-ChildItem -LiteralPath $Directory -File -Recurse)
 $forbidden = $files | Where-Object { $_.Name -match '(?i)(verification|product-check|startup-error|\.pdb$|\.log$|\.dmp$|\.pfx$|\.p12$|\.key$|\.cs$|\.ps1$|\.mjs$|\.mp4$|notes\.json|Caveat|Kalam|MainPage|MainWindow)' }
 if ($forbidden) { throw ('Development files in payload: ' + ($forbidden.Name -join ', ')) }
+# Component-only SDK deployment must not silently regain the umbrella runtime.
+$unused = $files | Where-Object Name -Match '^(onnxruntime|DirectML|Microsoft\.Windows\.(AI|Widgets))'
+if ($unused) { throw ('Unused SDK components in payload: ' + ($unused.Name -join ', ')) }
+if (($files | Measure-Object Length -Sum).Sum -gt 200MB) { throw 'Payload exceeds the 200 MiB size budget. Review dependency or publish changes.' }
 # Inspect owned managed binaries as both UTF-8 and UTF-16: a normal text search
 # alone would miss .NET user strings. Vendor debug/source paths are not authored
 # Scrunch paths and are left intact in signed redistributables.

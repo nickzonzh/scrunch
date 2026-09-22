@@ -4,7 +4,9 @@
 
 Scrunch remains an unpackaged WinUI 3 application. Both .NET and Windows App SDK
 are self-contained; no shared runtime, MSIX registration or signing certificate is
-required. Release uses ReadyToRun, with trimming and single-file bundling disabled.
+required. Release disables ReadyToRun, trimming and single-file bundling. It uses
+the WinUI/DWrite SDK component packages rather than the full umbrella runtime.
+See [package size](PACKAGE-SIZE.md) for measured savings and startup tradeoffs.
 The prepared graphics bakes, runtime shader, icon, fonts, XAML and full dependency
 notices are verified before packaging. Development benches and verification
 entrypoints are compiled out of Release.
