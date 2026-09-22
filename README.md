@@ -40,6 +40,8 @@ configured. Do not disable Windows security features to install Scrunch.
   Undo, Settings and Quit. Closing the shell keeps notes and the shortcut active.
 - In Settings, **Start Scrunch when I sign in** is off until you enable it.
   Sign-in restores notes with the shell hidden.
+- Settings → **Note text** lets you choose Drawably Pen or Inter and a font size
+  from 12 to 36, with a live preview. Changes apply to all notes and survive restart.
 
 [Watch a short discard demonstration](docs/media/scrunch-discard.mp4).
 [Dark shell example](docs/media/scrunch-dark.png).

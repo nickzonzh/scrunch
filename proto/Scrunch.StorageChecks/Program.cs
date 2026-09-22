@@ -15,6 +15,7 @@ using (var store = new NoteStore(directory))
     Check(locked, "A second process cannot become a writer");
     store.Document.Notes.Add(new NoteRecord { Id = id, Text = "Milk 🥛\n日本語", X = -1000, Y = 220, Width = 340, Height = 240, Pinned = true, Colour = "mint", Feel = 0, ReducedMotion = true });
     store.Document.Defaults = new NoteDefaults { Colour = "lavender", Pinned = true, ReducedMotion = true };
+    store.Document.Typography = new NoteTypography { Font = "inter", Size = 28 };
     store.Save();
     store.Document.Notes[0].Text += "\nA walk";
     store.Save();
@@ -23,6 +24,7 @@ using (var store = new NoteStore(directory))
 using (var store = new NoteStore(directory))
 {
     var note = store.Document.Notes.Single();
+    Check(store.Document.Typography.Font == "inter" && store.Document.Typography.Size == 28, "Font and size survive restart without changing note contents");
     Check(store.Document.Defaults.Colour == "lavender" && store.Document.Defaults.Pinned && store.Document.Defaults.ReducedMotion, "New-note defaults survive restart alongside saved notes");
     Check(note.Id == id && note.Text == "Milk 🥛\n日本語\nA walk" && note.X == -1000 && note.Y == 220 && note.Width == 340 && note.Height == 240 && note.Pinned && note.Colour == "mint" && note.Feel == 0 && note.ReducedMotion, "Restart round-trip preserves text, geometry and preferences");
     note.DeletedAt = DateTimeOffset.UtcNow; store.Save();
@@ -70,6 +72,14 @@ string legacyPath = Path.Combine(legacy, "notes.json");
 File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[]}");
 using (var store = new NoteStore(legacy))
     Check(store.Document.Defaults.Colour == "yellow" && !store.Document.Defaults.Pinned && !store.Document.Defaults.ReducedMotion, "Existing Scrunch files without defaults retain the original new-note behaviour");
+using (var store = new NoteStore(legacy))
+    Check(store.Document.Typography.Font == "drawably" && store.Document.Typography.Size == 23, "Existing notebooks retain the original handwriting and size");
+File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[],\"Typography\":null}");
+using (var store = new NoteStore(legacy))
+    Check(store.Document.Typography.Font == "drawably" && store.Document.Typography.Size == 23, "Null optional typography safely uses the original appearance");
+File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[],\"Typography\":{\"Font\":\"missing-font\",\"Size\":500}}");
+using (var store = new NoteStore(legacy))
+    Check(store.Document.Typography.Font == "drawably" && store.Document.Typography.Size == 23, "Invalid optional font and size fall back without stranding notes");
 File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[],\"Defaults\":null}");
 using (var store = new NoteStore(legacy)) Check(store.Document.Defaults.Colour == "yellow", "Null optional defaults do not strand saved notes");
 File.WriteAllText(legacyPath, "{\"Version\":1,\"Notes\":[],\"Defaults\":{\"Colour\":\"unknown\"}}");

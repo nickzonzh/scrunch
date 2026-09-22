@@ -141,6 +141,14 @@
             <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="18" Padding="0,0,8,8">
                     <StackPanel Spacing="12">
+                        <TextBlock Text="Note text" FontWeight="SemiBold"/>
+                        <ComboBox x:Name="NoteFont" Header="Font" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="NoteFont" SelectionChanged="Typography_Changed"/>
+                        <NumberBox x:Name="NoteFontSize" Header="Font size" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="2" AutomationProperties.AutomationId="NoteFontSize" ValueChanged="FontSize_Changed"/>
+                        <TextBlock x:Name="FontPreview" Text="A little thing to remember…" TextWrapping="Wrap"/>
+                        <TextBlock Text="Applies to all notes, including new ones." TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                    <StackPanel Spacing="12">
                         <TextBlock Text="New notes" FontWeight="SemiBold"/>
                         <ComboBox x:Name="DefaultColour" Header="Paper colour" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="DefaultColour" SelectionChanged="Defaults_Changed"/>
                         <ToggleSwitch x:Name="DefaultPinned" Header="Always on top" OnContent="On" OffContent="Off" AutomationProperties.AutomationId="DefaultPinned" Toggled="Defaults_Changed"/>

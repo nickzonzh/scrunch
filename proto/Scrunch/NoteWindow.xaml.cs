@@ -81,6 +81,7 @@ public sealed partial class NoteWindow : Window
     private XamlRoot? _observedRoot;
     private readonly List<Action> _detachNativeEvents = new();
     public bool IsDiscarding { get; private set; }
+    public void SetTypography(NoteTypography typography) => Note.SetTypography(typography);
     public int DiscardVersion { get; private set; }
     public int LastDiscardFrames { get; private set; }
     public string LastDiscardOutcome { get; private set; } = "Not started";

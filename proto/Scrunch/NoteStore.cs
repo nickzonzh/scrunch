@@ -32,6 +32,22 @@ public sealed class NoteDocument
     [JsonRequired] public int Version { get; set; } = 1;
     [JsonRequired] public List<NoteRecord> Notes { get; set; } = new();
     public NoteDefaults Defaults { get; set; } = new();
+    public NoteTypography Typography { get; set; } = new();
+}
+
+public sealed class NoteTypography
+{
+    public const double MinimumSize = 12;
+    public const double MaximumSize = 36;
+    public string Font { get; set; } = "drawably";
+    public double Size { get; set; } = 23;
+    [JsonIgnore] public string ResourceKey => Font == "inter" ? "ShellFontFamily" : "NoteFontFamily";
+
+    public void Normalize()
+    {
+        if (Font is not ("drawably" or "inter")) Font = "drawably";
+        if (!double.IsFinite(Size) || Size < MinimumSize || Size > MaximumSize) Size = 23;
+    }
 }
 
 // One writer, durable atomic replacement, and the previous successful snapshot.
@@ -61,6 +77,8 @@ public sealed class NoteStore : IDisposable
         if (document.Version != 1) throw new NotSupportedException("This note file needs a newer version of Scrunch.");
         // Older files have no defaults. Invalid optional preferences must not strand valid notes.
         document.Defaults ??= new();
+        document.Typography ??= new();
+        document.Typography.Normalize();
         if (!new[] { "yellow", "pink", "mint", "blue", "lavender", "peach" }.Contains(document.Defaults.Colour))
             document.Defaults.Colour = "yellow";
         if (document.Notes == null || document.Notes.Any(n => n == null || n.Id == Guid.Empty || n.Text == null ||

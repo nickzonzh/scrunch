@@ -25,6 +25,12 @@ try {
     $properties = (Ui get-property StartWithWindows -w $main) -join "`n"
     if ($properties -notmatch 'ToggleState: Off' -or $properties -notmatch 'IsEnabled: False') { throw 'Portable startup is not disabled and off.' }
     Ui inspect -w $main --depth 8 | Set-Content (Join-Path $evidence 'portable-settings.txt')
+    Ui invoke NoteFont -w $main | Out-Null
+    $fontOptions = (Ui inspect -w $main --depth 10) -join "`n"
+    $inter = [regex]::Match($fontOptions, '(itm-\S+) ListItem "Inter"').Groups[1].Value
+    if (!$inter) { throw 'Inter option did not appear.' }
+    Ui invoke $inter -w $main | Out-Null
+    Ui set-value NoteFontSize 28 -w $main | Out-Null
     Ui invoke BackToNotes -w $main | Out-Null
     Ui invoke NewNote -w $main | Out-Null
     Start-Sleep -Milliseconds 400
@@ -34,7 +40,22 @@ try {
     if ((Get-Content (Join-Path $data 'notes.json') -Raw) -notmatch 'Portable release fixture') { throw 'Portable text was not saved.' }
     Ui invoke Quit -w $main | Out-Null
     if (!$app.WaitForExit(6000)) { throw 'Portable Quit did not exit.' }
-    Write-Host 'PASS: Exact ZIP launches, disables startup registration, creates/edits/saves a note and quits.'
+    $saved = Get-Content (Join-Path $data 'notes.json') -Raw | ConvertFrom-Json
+    if ($saved.Typography.Font -ne 'inter' -or $saved.Typography.Size -ne 28) { throw 'Font settings were not saved.' }
+    $app = Start-Process (Join-Path $directory 'Scrunch.exe') -PassThru
+    Start-Sleep -Milliseconds 1600
+    $main = (Ui list-windows -a $app.Id --json | ConvertFrom-Json | Where-Object title -eq 'Scrunch').hwnd
+    Ui invoke Settings -w $main | Out-Null
+    $restoredFont = (Ui get-value NoteFont -w $main) -join "`n"
+    $restoredSize = (Ui get-value InputBox -w $main) -join "`n"
+    Ui inspect -w $main --depth 8 | Set-Content (Join-Path $evidence 'portable-font-restored.txt')
+    if ($restoredFont -notmatch 'Inter' -or $restoredSize -notmatch '28') { throw "Font settings were not restored after restart: font=$restoredFont; size=$restoredSize" }
+    Ui invoke BackToNotes -w $main | Out-Null
+    $note = (Ui list-windows -a $app.Id --json | ConvertFrom-Json | Where-Object title -eq 'Scrunch note').hwnd
+    if (((Ui get-value NoteText -w $note) -join "`n") -notmatch 'Portable release fixture') { throw 'Note did not restore after restart.' }
+    Ui invoke Quit -w $main | Out-Null
+    if (!$app.WaitForExit(6000)) { throw 'Portable Quit after restart did not exit.' }
+    Write-Host 'PASS: Exact ZIP launches, disables startup, saves a note and font settings, restores them after restart, and quits.'
 } catch { $errorText = $_.ToString(); throw }
 finally {
     if ($app -and !$app.HasExited -and $main) {
