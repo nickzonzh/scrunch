@@ -14,12 +14,14 @@ public sealed partial class ShellView : UserControl
     private IReadOnlyList<NoteRecord> _notes = Array.Empty<NoteRecord>();
     private bool _loadingDefaults;
     private bool _loadingStartup;
+    private bool _loadingTypography = true;
     public event Action? NewRequested;
     public event Action<Guid>? NoteRequested;
     public event Action? UndoRequested;
     public event Action? QuitRequested;
     public event Action? DataFolderRequested;
     public event Action<NoteDefaults>? DefaultsChanged;
+    public event Action<NoteTypography>? TypographyChanged;
     public event Action? FitRequested;
     public event Action? DismissRequested;
 
@@ -31,6 +33,11 @@ public sealed partial class ShellView : UserControl
         foreach (var key in PaperTokens.Colours.Keys)
             DefaultColour.Items.Add(new ComboBoxItem { Content = char.ToUpperInvariant(key[0]) + key[1..], Tag = key });
         _loadingDefaults = false;
+        NoteFont.Items.Add(new ComboBoxItem { Content = "Drawably Pen", Tag = "drawably" });
+        NoteFont.Items.Add(new ComboBoxItem { Content = "Inter", Tag = "inter" });
+        NoteFontSize.Minimum = NoteTypography.MinimumSize;
+        NoteFontSize.Maximum = NoteTypography.MaximumSize;
+        ConfigureTypography(new NoteTypography());
         var version = typeof(ShellView).Assembly.GetName().Version;
         VersionLabel.Text = $"Scrunch · {version?.Major}.{version?.Minor}.{version?.Build}";
         AddShortcut(VirtualKey.N, VirtualKeyModifiers.Control, () => NewRequested?.Invoke());
@@ -62,6 +69,31 @@ public sealed partial class ShellView : UserControl
         _notes = notes.ToArray();
         UndoButton.IsEnabled = _notes.Any(n => n.DeletedAt != null);
         FilterNotes();
+    }
+
+    public void ConfigureTypography(NoteTypography typography)
+    {
+        _loadingTypography = true;
+        NoteFont.SelectedItem = NoteFont.Items.Cast<ComboBoxItem>().First(i => (string)i.Tag == typography.Font);
+        NoteFontSize.Value = typography.Size;
+        UpdateFontPreview(typography);
+        _loadingTypography = false;
+    }
+
+    private void Typography_Changed(object sender, SelectionChangedEventArgs e) => ChangeTypography();
+    private void FontSize_Changed(NumberBox sender, NumberBoxValueChangedEventArgs e) => ChangeTypography();
+    private void ChangeTypography()
+    {
+        if (_loadingTypography || NoteFont.SelectedItem is not ComboBoxItem font || !double.IsFinite(NoteFontSize.Value)) return;
+        var typography = new NoteTypography { Font = (string)font.Tag, Size = NoteFontSize.Value };
+        UpdateFontPreview(typography);
+        TypographyChanged?.Invoke(typography);
+    }
+
+    private void UpdateFontPreview(NoteTypography typography)
+    {
+        FontPreview.FontFamily = (FontFamily)Application.Current.Resources[typography.ResourceKey];
+        FontPreview.FontSize = typography.Size;
     }
 
     public void SetTrayStatus(bool available)

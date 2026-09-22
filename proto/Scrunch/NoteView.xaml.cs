@@ -183,6 +183,15 @@ public sealed partial class NoteView : UserControl
         Edit();
         Changed?.Invoke(this, EventArgs.Empty);
     }
+    public void SetTypography(NoteTypography typography)
+    {
+        var family = (FontFamily)Application.Current.Resources[typography.ResourceKey];
+        if (NoteText.FontFamily.Source == family.Source && NoteText.FontSize == typography.Size) return;
+        NoteText.FontFamily = family;
+        NoteText.FontSize = typography.Size;
+        _contentVersion++;
+        Edit(); // The next paper motion must capture the newly laid-out text.
+    }
     public Task PeelAsync() { Report("Peel: the writing travels with the paper."); return PrepareMotion(r => r.Peel()); }
     public async Task DiscardAsync()
     {

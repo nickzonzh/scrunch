@@ -49,6 +49,13 @@ public sealed partial class ProductWindow : Window
         _shell.QuitRequested += Quit;
         _shell.DismissRequested += () => { if (_trayOpened) HideShell(); };
         _shell.DefaultsChanged += defaults => { _store.Document.Defaults = defaults; ScheduleSave(); };
+        _shell.TypographyChanged += typography =>
+        {
+            _store.Document.Typography = typography;
+            foreach (var window in _windows.Values)
+                if (!window.IsDiscarding) window.SetTypography(typography);
+            ScheduleSave();
+        };
         _shell.DataFolderRequested += OpenDataFolder;
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -163,6 +170,7 @@ public sealed partial class ProductWindow : Window
             HideShell();
         };
         _shell.Configure(_store.Document.Defaults, _hotkey.Registered);
+        _shell.ConfigureTypography(_store.Document.Typography);
         _save.Tick += (_, _) => { _save.Stop(); SaveNow(); RefreshCount(); };
         var retry = new Button { Content = "Try saving again" };
         retry.Click += (_, _) => { if (SaveNow()) _notice.IsOpen = false; };
@@ -414,6 +422,7 @@ public sealed partial class ProductWindow : Window
     private NoteWindow Open(NoteRecord record, bool focus)
     {
         var window = new NoteWindow(record: record);
+        window.SetTypography(_store.Document.Typography);
         _windows.Add(record.Id, window);
         window.RecordChanged += (_, _) => ScheduleSave();
         window.NewRequested += (_, _) => CreateNote();
@@ -467,7 +476,7 @@ public sealed partial class ProductWindow : Window
         if (!SaveNow()) { record.DeletedAt = previous; return; }
         if (_windows.TryGetValue(record.Id, out var existing))
         {
-            existing.CancelDiscard(); existing.FocusEditor(); RefreshCount();
+            existing.CancelDiscard(); existing.SetTypography(_store.Document.Typography); existing.FocusEditor(); RefreshCount();
         }
         else Open(record, true);
         _notice.IsOpen = false;
@@ -556,6 +565,7 @@ public sealed partial class ProductWindow : Window
             await Task.Delay(500);
             Check(record.DeletedAt == null && _windows.ContainsKey(record.Id), "Completed animated discard remains recoverable");
             var menuNote = _windows[record.Id];
+            await VerifyTypographyAsync(Check, menuNote);
             menuNote.SetTestContent("Fresh writing, then a real menu discard.", "peach", 340, 280);
             await menuNote.InvokeMenuDiscardForCheckAsync();
             await Task.Delay(2000);

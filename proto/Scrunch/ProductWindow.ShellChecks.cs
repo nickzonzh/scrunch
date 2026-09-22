@@ -11,6 +11,50 @@ namespace Scrunch;
 
 public sealed partial class ProductWindow
 {
+    private async Task VerifyTypographyAsync(Action<bool, string> check, NoteWindow window)
+    {
+        var view = (NoteView)window.Content;
+        var editor = (TextBox)view.FindName("NoteText");
+        string text = editor.Text;
+        double width = view.PaperWidth, height = view.PaperHeight;
+        await view.WarmTextureAsync();
+        string previousTexture = view.TextureDigest;
+        _shell.ShowSettings();
+        ((ComboBox)_shell.FindName("NoteFont")).SelectedIndex = 1;
+        ((NumberBox)_shell.FindName("NoteFontSize")).Value = 28;
+        await Task.Delay(500);
+        check(editor.FontFamily.Source.Contains("InterVariable.ttf") && editor.FontSize == 28 &&
+            editor.Text == text && view.PaperWidth == width && view.PaperHeight == height,
+            "Settings font and size update an existing editor without changing text or paper geometry");
+        check(!_dirty && _store.Document.Typography.Font == "inter" && _store.Document.Typography.Size == 28,
+            "Settings typography autosaves independently of new-note defaults");
+        var preview = (TextBlock)_shell.FindName("FontPreview");
+        check(preview.FontFamily.Source == editor.FontFamily.Source && preview.FontSize == 28,
+            "Settings preview matches the note typography");
+        await CaptureShellAsync("shell-font-settings", ElementTheme.Light);
+        await CaptureElementAsync(view, "note-inter-28");
+        await view.WarmTextureAsync();
+        check(previousTexture.Length > 0 && previousTexture != view.TextureDigest,
+            "Font changes invalidate the motion texture and recapture the new glyph layout");
+        var created = CreateNote()!;
+        await Task.Delay(350);
+        var createdEditor = (TextBox)((NoteView)created.Content).FindName("NoteText");
+        check(createdEditor.FontFamily.Source == editor.FontFamily.Source && createdEditor.FontSize == 28,
+            "New notes inherit the current global font and size");
+        created.Discard();
+        await Task.Delay(100);
+        UndoDiscard();
+        await Task.Delay(350);
+        var restoredEditor = (TextBox)((NoteView)_windows[created.Record!.Id].Content).FindName("NoteText");
+        check(restoredEditor.FontFamily.Source == editor.FontFamily.Source && restoredEditor.FontSize == 28,
+            "Undo restores notes using the current global typography");
+        _windows[created.Record.Id].Discard();
+        ((NumberBox)_shell.FindName("NoteFontSize")).Value = double.NaN;
+        check(_store.Document.Typography.Size == 28, "Clearing the size input does not save an invalid font size");
+        ((NumberBox)_shell.FindName("NoteFontSize")).Value = 28;
+        _shell.ShowHome();
+    }
+
     private async Task VerifyShellAsync(Action<bool, string> check)
     {
         T Control<T>(string name) where T : FrameworkElement => (T)_shell.FindName(name);
