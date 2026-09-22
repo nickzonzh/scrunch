@@ -71,8 +71,23 @@ function Menu {
 $app = $null
 try {
     $notebook = if ($DataDirectory) { Join-Path $DataDirectory 'notes.json' } else { Join-Path $BuildDirectory 'product-check-tray/notes.json' }
+    if (!(Test-Path -LiteralPath $notebook)) {
+        # The documented Release command accepts a fresh synthetic data folder.
+        # Seed through the real editor, then restart to test actual persistence.
+        $app = Start-Process $exe -ArgumentList '--tray-check' -PassThru
+        Start-Sleep -Milliseconds 1500
+        $main=(Windows $app.Id | Where-Object title -eq 'Scrunch').hwnd
+        Ui invoke NewNote -w $main | Out-Null
+        Start-Sleep -Milliseconds 400
+        $fixture=(Windows $app.Id | Where-Object title -eq 'Scrunch note').hwnd
+        Ui set-value NoteText 'Physical tray acceptance fixture.' -w $fixture | Out-Null
+        Ui invoke Quit -w $main | Out-Null
+        if (!$app.WaitForExit(5000)) { throw 'Fixture did not quit cleanly.' }
+        $app = $null
+    }
     $saved = Get-Content $notebook -Raw | ConvertFrom-Json
     $expectedNotes = @($saved.Notes | Where-Object { !$_.DeletedAt }).Count
+    $expectedUndo = @($saved.Notes | Where-Object DeletedAt).Count -gt 0
     $app = Start-Process $exe -ArgumentList '--tray-check' -PassThru
     Start-Sleep -Milliseconds 1500
     $main=(Windows $app.Id | Where-Object title -eq 'Scrunch').hwnd
@@ -90,7 +105,7 @@ try {
     Check ([TrayDesktopCheck]::IsWindowVisible([IntPtr]$main)) 'Physical tray left-click shows the existing shell'
     Capture $main 'tray-shell'
     [TrayDesktopCheck]::SetForegroundWindow([IntPtr]$taskbar) | Out-Null
-    Ui invoke 'Notification Chevron' -w $taskbar | Out-Null
+    Ui click 'Notification Chevron' -w $taskbar | Out-Null
     Start-Sleep -Milliseconds 200
     Check (![TrayDesktopCheck]::IsWindowVisible([IntPtr]$main)) 'Physical click away dismisses the tray-opened shell'
     Check (@(Windows $app.Id | Where-Object title -eq 'Scrunch note').Count -eq $expectedNotes) 'Click-away keeps notes visible'
@@ -98,7 +113,8 @@ try {
     $tree=(Ui inspect -w $menu) -join "`n"
     $tree | Set-Content (Join-Path $evidence 'menu-uia.txt')
     Capture $menu 'native-menu'
-    Check ($tree -match 'New note' -and $tree -match 'Show notes' -and $tree -match 'Undo last discard.*disabled' -and $tree -match 'Settings' -and $tree -match 'Quit') 'Native menu contains every expected action and disables unavailable Undo'
+    Check ($tree -match 'New note' -and $tree -match 'Show notes' -and $tree -match 'Undo last discard' -and $tree -match 'Settings' -and $tree -match 'Quit') 'Native menu contains every expected action'
+    Check (($tree -match 'Undo last discard.*disabled') -eq !$expectedUndo) 'Native menu Undo availability matches the saved notebook'
     Ui send-keys 'n' -w $main --via send-input | Out-Null
     Start-Sleep -Milliseconds 400
     Check (@(Windows $app.Id | Where-Object title -eq 'Scrunch note').Count -eq $expectedNotes+1) 'Native menu keyboard New note creates a visible editor'
@@ -108,13 +124,15 @@ try {
     $menu=Menu
     $undoTree=(Ui inspect -w $menu) -join "`n"
     Check ($undoTree -match 'Undo last discard' -and $undoTree -notmatch 'Undo last discard.*disabled') 'Native Undo becomes enabled after a recoverable discard'
-    Ui invoke 'Undo last discard' -w $menu | Out-Null
+    # Classic Win32 menu items have no UIA InvokePattern. Deliver real keyboard
+    # input to the open menu; retain the CLI's foreground safety checks.
+    Ui send-keys 'u' -w $main --via send-input | Out-Null
     Start-Sleep -Milliseconds 300
     Check (@(Windows $app.Id | Where-Object title -eq 'Scrunch note').Count -eq $expectedNotes+1) 'Native tray Undo restores the discarded physical note'
-    $menu=Menu; Ui invoke 'Show notes' -w $menu | Out-Null
+    $menu=Menu; Ui send-keys 's' -w $main --via send-input | Out-Null
     Start-Sleep -Milliseconds 150
     Check (@(Windows $app.Id | Where-Object title -eq 'Scrunch note').Count -eq $expectedNotes+1) 'Native Show notes leaves all notes visible'
-    $menu=Menu; Ui invoke Settings -w $menu | Out-Null
+    $menu=Menu; Ui send-keys 'e' -w $main --via send-input | Out-Null
     Start-Sleep -Milliseconds 250
     Check (((Ui inspect -w $main) -join "`n") -match 'Back to notes') 'Native tray Settings opens the existing settings view'
     Ui invoke BackToNotes -w $main | Out-Null
@@ -125,7 +143,7 @@ try {
     Ui send-keys 'ctrl+alt+n' -w $taskbar --via send-input | Out-Null
     Start-Sleep -Milliseconds 500
     Check (@(Windows $app.Id | Where-Object title -eq 'Scrunch note').Count -eq $before+1) 'Global shortcut works with another application foreground and shell hidden'
-    $menu=Menu; Ui invoke Quit -w $menu | Out-Null
+    $menu=Menu; Ui send-keys 'q' -w $main --via send-input | Out-Null
     Check ($app.WaitForExit(5000)) 'Native tray Quit terminates the resident process'
     $app=$null
     $hash=[Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('Scrunch.NotificationIcon.v1|'+[IO.Path]::GetFullPath($exe).ToUpperInvariant()))
@@ -151,7 +169,11 @@ try {
         $redirect=Start-Process $exe -ArgumentList '--tray-check' -PassThru
         $redirect.WaitForExit(5000) | Out-Null
         $main=(Windows $app.Id | Where-Object title -eq 'Scrunch').hwnd
-        if($main){Ui invoke Quit -w $main | Out-Null}
+        if($main){
+            if (((Ui inspect -w $main) -join "`n") -match 'Back to notes') { Ui invoke BackToNotes -w $main | Out-Null }
+            Ui invoke Quit -w $main | Out-Null
+            $app.WaitForExit(5000) | Out-Null
+        }
     }
     $env:SCRUNCH_DATA_DIRECTORY = $originalDataDirectory
 }
