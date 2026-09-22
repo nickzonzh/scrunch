@@ -19,9 +19,9 @@ Push-Location $root
 try {
     if (!$SkipChecks) { & "$PSScriptRoot/check.ps1" -Locked }
     # Match publish's configuration; deployment properties live in the project.
-    dotnet restore proto/Scrunch/Scrunch.csproj -r win-x64 -p:Platform=x64 -p:Configuration=Release --locked-mode
+    dotnet restore src/Scrunch/Scrunch.csproj -r win-x64 -p:Platform=x64 -p:Configuration=Release --locked-mode
     if ($LASTEXITCODE) { throw 'Application restore failed.' }
-    dotnet publish proto/Scrunch/Scrunch.csproj -c Release -r win-x64 -p:Platform=x64 -p:PublishProfile= -p:ContinuousIntegrationBuild=true --no-restore -o $publish
+    dotnet publish src/Scrunch/Scrunch.csproj -c Release -r win-x64 -p:Platform=x64 -p:PublishProfile= -p:ContinuousIntegrationBuild=true --no-restore -o $publish
     if ($LASTEXITCODE) { throw 'Release publish failed.' }
     & "$PSScriptRoot/write-notices.ps1" -OutputDirectory $publish
     Copy-Item LICENSE, THIRD_PARTY_NOTICES.md -Destination $publish

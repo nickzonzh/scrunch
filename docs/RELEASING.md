@@ -4,12 +4,14 @@
 
 Scrunch remains an unpackaged WinUI 3 application. Both .NET and Windows App SDK
 are self-contained; no shared runtime, MSIX registration or signing certificate is
-required. Release disables ReadyToRun, trimming and single-file bundling. It uses
+required. Release trims partially and disables ReadyToRun and single-file bundling;
+Debug is untrimmed and keeps reflection for the diagnostics writers. Release uses
 the WinUI/DWrite SDK component packages rather than the full umbrella runtime.
 See [package size](PACKAGE-SIZE.md) for measured savings and startup tradeoffs.
-The prepared graphics bakes, runtime shader, icon, fonts, XAML and full dependency
-notices are verified before packaging. Development benches and verification
-entrypoints are compiled out of Release.
+The prepared graphics bakes, compiled shaders, icon, fonts, XAML and full dependency
+notices are verified before packaging; see [ScrunchFX](SCRUNCHFX.md) for the asset
+and shader pipeline. Development benches and verification entrypoints are compiled
+out of Release.
 
 Inno Setup was selected for its small declarative definition, per-user installation,
 Start Menu integration and standard uninstall/upgrade support. MSIX would add a
@@ -48,6 +50,11 @@ for inspection. An interrupted staging directory can be inspected/recovered; it 
 never silently merged. Do not keep using an old build after migration: its retained
 notebook is a historical copy and changes are not synchronized.
 
+A fatal fault is appended to `crash.log` in the same data folder, so an isolated
+`SCRUNCH_DATA_DIRECTORY` run keeps its crash record with its own notebook. One entry
+per fault (UTC timestamp, message, full exception), discarded once the file passes
+256 KiB. It is local evidence only: nothing is uploaded and the app never reads it back.
+
 The installer never accesses either data directory. Upgrades overwrite the stable
 application location and remove obsolete root binary/resource files. Quit is
 required before upgrade/uninstall; the installer checks a process-lifetime mutex
@@ -71,8 +78,11 @@ cannot register movable paths. Uninstall removes the Run value; upgrade preserve
 
 ## Verification
 
-`tools/check.ps1 -Locked` runs storage/migration, geometry, FX and tray geometry/identity
-checks and reproduces prepared bakes. These work in CI. Native product, renderer,
+`tools/check.ps1 -Locked` restores with the lockfiles, runs the xUnit suite in
+`tests/Scrunch.Tests` (`dotnet test`: storage/migration, note session, geometry, FX
+bakes and tray geometry/identity), reproduces the prepared ScrunchFX bakes with
+`tools/scrunchfx-assets/author.mjs --check`, and compares the compiled shaders with
+`tools/compile-shaders.ps1 -Check`. These work in CI. Native product, renderer,
 FX, tray, actual keyboard/mouse and installation tests require an unlocked Windows
 desktop. They must not run in a headless GitHub runner.
 
@@ -106,8 +116,12 @@ For interactive tray acceptance, install the final artifact and run in an unlock
 foregroundable Windows desktop session:
 
 ```powershell
-./proto/verify-tray-ui.ps1 -BuildDirectory "$env:LOCALAPPDATA/Programs/Scrunch" -DataDirectory "$PWD/artifacts/manual-tray-data" -EvidenceDirectory "$PWD/artifacts/manual-tray-evidence"
+./tools/native/verify-tray-ui.ps1 -BuildDirectory "$env:LOCALAPPDATA/Programs/Scrunch" -DataDirectory "$PWD/artifacts/manual-tray-data" -EvidenceDirectory "$PWD/artifacts/manual-tray-evidence"
 ```
+
+The remaining desktop scripts live beside it in `tools/native` (shell matrix and the
+four ScrunchFX capture sweeps); they share `tools/native/Verify.psm1`, which resolves
+the WinApp CLI, isolates `SCRUNCH_DATA_DIRECTORY`, and writes the JSON evidence files.
 
 For the separate programmatic native-menu check, use:
 
@@ -135,8 +149,10 @@ Never substitute personal data for a blocked desktop automation test.
    ```
 
 6. Actions builds and uploads the EXE, ZIP and SHA256SUMS, then creates a **draft**
-   GitHub Release. Download those exact artifacts, verify their hashes, and repeat
-   native install/portable acceptance if the workflow rebuilt them.
+   GitHub Release titled `Scrunch <version> (native acceptance pending)`, whose notes
+   open with the same warning: CI ran the headless gate only. Download those exact
+   artifacts, verify their hashes, and repeat native install/portable acceptance if
+   the workflow rebuilt them. Remove the pending suffix when you publish.
 7. Make the repository public only when ready (it was private during preparation).
    Review and publish the draft after acceptance. No automatic public publication.
 

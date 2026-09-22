@@ -1,3 +1,9 @@
+* text=auto
 *.nfx binary
+*.cso binary
+*.ttf binary
+*.ico binary
+*.png binary
+*.mp4 binary
 tools/scrunchfx-assets/author.mjs text eol=lf
-proto/Scrunch/Assets/ScrunchFX/scrunch-provenance.json text eol=lf
+src/Scrunch/Assets/ScrunchFX/scrunch-provenance.json text eol=lf

@@ -28,6 +28,12 @@ jobs:
             artifacts/release/*/Scrunch-*.zip
             artifacts/release/*/SHA256SUMS.txt
           if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: Scrunch-test-results
+          path: '**/TestResults/**/*.trx'
+          if-no-files-found: ignore
   draft:
     needs: windows
     if: startsWith(github.ref, 'refs/tags/v')
@@ -49,5 +55,10 @@ jobs:
           [xml]$props = Get-Content Directory.Build.props
           $version = [string]$props.Project.PropertyGroup.Version
           $files = Get-ChildItem release-artifacts -Recurse -File | Where-Object { $_.Extension -in '.exe','.zip' -or $_.Name -eq 'SHA256SUMS.txt' }
-          gh release create $env:RELEASE_TAG @($files.FullName) --verify-tag --draft --title "Scrunch $version" --notes-file "docs/releases/$version.md"
+          # CI only proves the headless gate. Native acceptance runs on a real
+          # interactive desktop, so the draft says so in its title and notes.
+          $notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          $banner = 'This draft was produced by CI headless checks only (build, xUnit suite, prepared-asset and shader checks). Native acceptance has not run: do not publish before completing the native gate in docs/RELEASING.md.'
+          Set-Content -LiteralPath $notes -Value (@($banner, '') + (Get-Content "docs/releases/$version.md"))
+          gh release create $env:RELEASE_TAG @($files.FullName) --verify-tag --draft --title "Scrunch $version (native acceptance pending)" --notes-file $notes
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

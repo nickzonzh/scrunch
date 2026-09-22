@@ -16,7 +16,7 @@ No account, cloud sync, telemetry or analytics service.
 Windows 10 version 1809 or later, x64. Windows 11 is supported by the dependencies;
 see the [verification report](docs/RELEASE-VERIFICATION.md) for tested hardware.
 
-Download `Scrunch-0.1.0-Setup.exe` from [Releases](https://github.com/nickzonzh/scrunch/releases).
+Download the latest `Scrunch-<version>-Setup.exe` from [Releases](https://github.com/nickzonzh/scrunch/releases).
 The installer uses `%LOCALAPPDATA%\Programs\Scrunch`, needs no administrator
 rights, and adds Scrunch to the Start Menu. Quit Scrunch before installing an
 update. Uninstalling removes the app and its startup entry, while keeping notes.
@@ -49,9 +49,11 @@ configured. Do not disable Windows security features to install Scrunch.
 ## Data and privacy
 
 Notes and preferences live in `%LOCALAPPDATA%\Scrunch\notes.json`, with a previous
-snapshot in `notes.json.bak`. Earlier installations are copied safely into the new
-folder on first launch; the original notebook remains intact. Existing destination
-notes are never overwritten. See [migration and recovery](docs/RELEASING.md#data-and-upgrades).
+snapshot in `notes.json.bak`. A fatal fault is recorded next to them in `crash.log`;
+it stays on your machine and is never sent anywhere. Earlier installations are copied
+safely into the new folder on first launch; the original notebook remains intact.
+Existing destination notes are never overwritten.
+See [migration and recovery](docs/RELEASING.md#data-and-upgrades).
 
 Text saves in short batches and flushes on Quit. Discarded notes remain recoverable
 locally; there is no automatic expiry or permanent-delete control. Back up the data
@@ -64,21 +66,33 @@ in `global.json`, and Node.js 22 for the asset checks. NuGet restores the Window
 build tools; Visual Studio is optional. Run from PowerShell:
 
 ```powershell
-./proto/run.ps1 -Build                # everyday Debug app
-./tools/check.ps1 -Locked            # headless regression suites
-./tools/release.ps1                  # Release ZIP, installer and SHA-256 hashes
+./tools/run.ps1 -Build                # everyday Debug app, built to artifacts/debug
+./tools/check.ps1 -Locked             # headless gate: tests, prepared assets, shaders
+dotnet test tests/Scrunch.Tests       # the xUnit suite on its own
+./tools/release.ps1                   # Release ZIP, installer and SHA-256 hashes
 ```
 
 The release script retrieves a pinned, signed Inno Setup compiler into the ignored
-`tools/.cache` folder when needed. Build output goes to `artifacts/release/0.1.0`.
+`tools/.cache` folder when needed. Release output goes to `artifacts/release/<version>`.
+
+The repository is laid out as:
+
+| Path | Contents |
+| --- | --- |
+| `src/Scrunch` | the WinUI 3 application |
+| `src/Scrunch.Core` | WinUI-free storage, geometry and ScrunchFX bake code |
+| `tests/Scrunch.Tests` | the xUnit suite; `tests/fixtures` holds shared fixtures |
+| `tools` | build, release and verification scripts; `tools/native` drives the desktop tests |
+| `docs` | release engineering, ScrunchFX and verification records |
+| `packaging` | the Inno Setup definition |
 
 ## Development and verification
 
-See [release engineering](docs/RELEASING.md), [native verification](proto/VERIFICATION.md),
-[tray lifecycle](proto/TRAY.md), and [ScrunchFX](proto/SCRUNCHFX.md). Desktop tests
-need an unlocked interactive Windows session and use synthetic notes. GitHub Actions
-runs the headless checks and prepares a draft release on a version tag; native
-acceptance is required before publishing it.
+See [release engineering](docs/RELEASING.md), [ScrunchFX](docs/SCRUNCHFX.md) and the
+[verification report](docs/RELEASE-VERIFICATION.md). Desktop tests need an unlocked
+interactive Windows session and use synthetic notes. GitHub Actions runs the headless
+checks and prepares a draft release on a version tag; native acceptance is required
+before publishing it.
 
 ## Licence
 

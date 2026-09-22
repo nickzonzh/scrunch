@@ -16,14 +16,15 @@ self-intersection; it is not advertised as a physically exact solve.
 
 All families share 625 vertices, 1,152 triangles, 61 frames, UVs and indices.
 Reflection symmetry permits exact geometry-field mirroring without mirrored ink.
-Each file is 1,238,840 bytes; all three together are smaller than the old bake.
-The NFX1 binary layout is unchanged. `scrunch-provenance.json` records generator and
+Each file is 476,340 bytes. The NFX2 binary layout stores samples as IEEE
+binary16 (position xyz, normal xyz): 61% smaller than the NFX1 float32 layout
+and within 2.5e-4 of it. `scrunch-provenance.json` records generator and
 output hashes, fold definitions, settings and final bounds.
 
 After any authoring change, run the asset checks, then the actual native lab at
 held stages **and production speed**, including mirrored seeds and wide/tall
 notes. Bounds and edge checks do not establish material quality. See
-[`proto/SCRUNCHFX.md`](../../proto/SCRUNCHFX.md) for the full seed and verification contract.
+[`docs/SCRUNCHFX.md`](../../docs/SCRUNCHFX.md) for the full seed and verification contract.
 
 The borrowed Codrops conversion tooling and its Three.js dependency have been
 retired. Older source and attribution remain in Git history; these assets start
