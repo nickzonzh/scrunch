@@ -1,5 +1,5 @@
 param([Parameter(Mandatory)][int]$AppPid,
-      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/nootfx-variation-ui'),
+      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/scrunchfx-variation-ui'),
       [switch]$ProductionOnly)
 $ErrorActionPreference = 'Stop'
 $cli = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
@@ -16,14 +16,14 @@ $main = (Windows | Where-Object title -eq 'Scrunch — isolated FX lab').hwnd
 if (!$main -or (Note)) { throw 'Use a fresh isolated lab with no test notes.' }
 function Wait-Overlay {
     for ($i=0; $i -lt 50; $i++) {
-        $hwnd = (Windows | Where-Object title -eq 'NootFX paper').hwnd
+        $hwnd = (Windows | Where-Object title -eq 'ScrunchFX paper').hwnd
         if ($hwnd) { return $hwnd }; Start-Sleep -Milliseconds 100
     }
     throw 'Overlay did not appear'
 }
 function Wait-Idle {
     for ($i=0; $i -lt 50; $i++) {
-        if (!(Windows | Where-Object title -eq 'NootFX paper')) { return }
+        if (!(Windows | Where-Object title -eq 'ScrunchFX paper')) { return }
         Start-Sleep -Milliseconds 100
     }
     throw 'Overlay failed to become dormant'

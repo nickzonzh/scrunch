@@ -4,7 +4,7 @@ Implemented and verified on 21–22 September 2026 with Windows 10, x64, Windows
 SDK **1.8.260317003**, .NET 9, and the existing unpackaged/self-contained WinUI
 project. The shell remains the same `ShellView`, Acrylic backdrop, Inter font,
 search/list/settings structure and integrated title bar. Notes, Drawably type,
-persistence and NootFX retain their existing architecture.
+persistence and ScrunchFX retain their existing architecture.
 
 ## Lifecycle and actions
 
@@ -37,8 +37,8 @@ global to Scrunch, independent of the executable location.
   shutdown explicitly, stops the save timer, closes notes without discarding them,
   deletes the tray registration, disposes native handles/hotkey/store/FX and exits.
   Save failure keeps the process and notes open and reveals the shell.
-- `--startup` restores notes while leaving the shell hidden. No sign-in entry is
-  registered. A later manual launch reveals that resident shell.
+- `--startup` restores notes while leaving the shell hidden. The installed app registers sign-in only after explicit opt-in.
+  A later manual launch reveals that resident shell.
 
 The native `CreatePopupMenu` / `TrackPopupMenuEx` menu supplies keyboard/mnemonic
 and accessibility behaviour. Its commands are **New note**, **Show notes**,
@@ -91,11 +91,10 @@ needed. See [`size-proof.png`](../tools/scrunch-icon/size-proof.png).
 
 ## Launch at sign-in
 
-Deferred. The current deployment is a movable development output folder, without
-a stable installation location or relocation/repair contract. Persisting that path
-in HKCU Run would leave stale entries when builds move. No registry entry, shortcut,
-startup task or package conversion was added. `--startup` provides the quiet launch
-behaviour for a future explicit opt-in once deployment location is settled.
+The Release installer now provides a stable per-user path. Settings offers explicit
+opt-in launch at sign-in through a single HKCU Run value and the existing quiet
+launch path. See [release engineering](../docs/RELEASING.md#start-at-sign-in) for
+registration, upgrades, portable limitations and actual release acceptance.
 
 ## Verification
 
@@ -110,7 +109,7 @@ Native checks on the real interactive desktop:
 | --- | --- |
 | Existing product / shell / persistence integration | 45 passed |
 | Existing paper renderer | 25 passed |
-| Existing NootFX regression, NVIDIA RTX 3060 Ti | 62 passed |
+| Existing ScrunchFX regression, NVIDIA RTX 3060 Ti | 62 passed |
 | New resident tray integration | 22 passed |
 | External native desktop / keyboard / menu / restart script | 20 passed |
 | Tray-unavailable native fallback | 3 passed |
@@ -130,7 +129,7 @@ a promoted-tray-icon double-click/timing stress test was not performed.
 
 Both connected displays were exercised: primary work area `(0,0,2560,1400)` and
 secondary `(-1920,174,1920,1040)`, both 100% scale. Native positioning moved/clamped
-the shell on the negative-coordinate monitor. NootFX also captured and animated
+the shell on the negative-coordinate monitor. ScrunchFX also captured and animated
 on both displays. Actual notification invocation was from the primary taskbar's
 overflow, not a relocated secondary notification area.
 
@@ -138,7 +137,7 @@ Tray idle reference sample: **46.875 ms CPU over 10 seconds** (about **0.47% of 
 core**), **152.86 MiB private memory**, four idle notes, shell hidden, Debug build.
 This measures the whole process, not a before/after estimate of tray-only cost.
 The save timer was stopped; source inspection confirms no tray polling/render loop.
-NootFX separately verified zero FX frames/callbacks during idle with ordinary notes.
+ScrunchFX separately verified zero FX frames/callbacks during idle with ordinary notes.
 The final launcher-driven repeat with 13 accumulated test notes measured 78.125 ms
 over 10 seconds (0.78% of one core). GPU utilization and prolonged idle residency
 were not measured. The four-note sample is preserved in `tray-idle-reference.json`.
@@ -164,7 +163,7 @@ Reproduce on an unlocked Windows desktop after using **Quit** on existing builds
 ./proto/run.ps1 -Build -VerifyProduct
 ./proto/run.ps1 -VerifyTray
 ./proto/verify-tray-ui.ps1
-dotnet run --project proto/Noot.TrayChecks
+dotnet run --project proto/Scrunch.TrayChecks
 ```
 
 Let each native suite finish before starting the next. `-VerifyTray` must run first

@@ -1,0 +1,53 @@
+name: Build and release
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Build, check, package and hash
+        shell: pwsh
+        run: ./tools/release.ps1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Scrunch-release
+          path: |
+            artifacts/release/*/Scrunch-*.exe
+            artifacts/release/*/Scrunch-*.zip
+            artifacts/release/*/SHA256SUMS.txt
+          if-no-files-found: error
+  draft:
+    needs: windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: Scrunch-release
+          path: release-artifacts
+      - name: Create draft release for native acceptance
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $version = [string]$props.Project.PropertyGroup.Version
+          $files = Get-ChildItem release-artifacts -Recurse -File | Where-Object { $_.Extension -in '.exe','.zip' -or $_.Name -eq 'SHA256SUMS.txt' }
+          gh release create $env:RELEASE_TAG @($files.FullName) --verify-tag --draft --title "Scrunch $version" --notes-file "docs/releases/$version.md"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

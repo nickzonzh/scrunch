@@ -1,3 +1,5 @@
+> Historical development evidence. Current release acceptance and startup/migration behaviour are recorded in [RELEASE-VERIFICATION](../docs/RELEASE-VERIFICATION.md) and [RELEASING](../docs/RELEASING.md).
+
 # Verification
 
 ## Full shell brief revalidation, 21 September 2026, 23:16 local
@@ -17,8 +19,8 @@ The everyday executable and the user's existing preview notes were left intact.
   **400 × 329 DIP** plus a **32-DIP caption**. Thirty rows scrolled within a
   **560-DIP root** (528-DIP shell), then the shell shrank back to content.
 - **16 storage checks passed**, including restart round trips and recovery.
-  Evidence: `%TEMP%/noot-storage-check-58fedf0218e94c01a17f10cb1c284242`.
-- **62 NootFX lifecycle checks passed**, including repeated discard, Undo,
+  Evidence: `%TEMP%/scrunch-storage-check-58fedf0218e94c01a17f10cb1c284242`.
+- **62 ScrunchFX lifecycle checks passed**, including repeated discard, Undo,
   injected-failure recovery and reduced motion. Cold and 13-note 1.2-second idle
   samples both recorded **0 ms process CPU**; ordinary notes added no FX frames
   or devices, and final idle had no frame callbacks.
@@ -105,7 +107,7 @@ This section supersedes the earlier desktop-capture limitation below.
   Captures now switch the whole window theme, exercising backdrop and caption
   updates rather than only the inner shell's text colours.
 - **16 storage checks passed**. Fresh evidence:
-  `%TEMP%/noot-storage-check-f489efdd49b4428aa818d3120c074ceb`.
+  `%TEMP%/scrunch-storage-check-f489efdd49b4428aa818d3120c074ceb`.
 - Live UIA search `ANNUAL` found the dentist note through its body text. Native
   Ctrl+F focus retained the blue accent underline. The native system menu exposed
   Move, Minimize and Close, with Size/Maximize disabled; Alt+F4 saved and closed
@@ -142,11 +144,11 @@ failed on a live root-theme transition and was removed, matching the custom
 notification pattern. Viewport-based sizing avoids both doubled caption height
 and stale element layout when the list grows. Final checks pass after these fixes.
 
-An older `nootfx-material-checked/Noot.Proto.exe` remains running. A real global
+An older `scrunchfx-material-checked/Scrunch.exe` remains running. A real global
 shortcut conflict was visible and retained in screenshots; local creation worked.
 Windows 11, mixed DPI, physical caption gestures and actual OS high-contrast,
 transparency and power-policy toggles remain unverified. Per-window theme and
-forced fallback checks do not claim that coverage. Sticky-note visuals, NootFX,
+forced fallback checks do not claim that coverage. Sticky-note visuals, ScrunchFX,
 storage schema, IA and flows were not redesigned. No tray or packaging work.
 
 ## Compact shell and typography, 21 September 2026
@@ -165,15 +167,15 @@ Implementation details, font provenance and exact material values are in
   shrinking back to content, three Drawably note sizes, mixed-script/emoji text
   preservation, JSON round trip and long-content scrolling in the small editor.
 - **16 storage checks passed**. Evidence directory:
-  `%TEMP%/noot-storage-check-2735db131b6f4dd59da8c1b099753965`.
+  `%TEMP%/scrunch-storage-check-2735db131b6f4dd59da8c1b099753965`.
 - **25 native paper-renderer checks passed**, including cached texture refresh,
   interruption, reduced motion and return to idle. The bench exited after writing
   `artifacts/scrunch-compact/verification.json`.
-- **62 NootFX lifecycle checks passed** with the new font. The two measured
+- **62 ScrunchFX lifecycle checks passed** with the new font. The two measured
   1.2-second idle samples (cold and 13-note) both recorded 0 ms process CPU;
   the 13-note sample created no additional FX device or FX frames. The final
   idle check had no FX frame callbacks. These short checks are not a long-session
-  CPU/GPU performance claim. NootFX and physical paper implementation are unchanged.
+  CPU/GPU performance claim. ScrunchFX and physical paper implementation are unchanged.
 - Native desktop matrix: six cases launched and exited through Quit, with UIA
   controls present. Light/dark RequestedTheme × bright/dark real GDI backgrounds
   reported Acrylic `Active`; explicit solid fallbacks reported #FFF3F3F3 and
@@ -230,7 +232,7 @@ capture session or direct user observation is needed before further glass tuning
 .\proto\run.ps1 -Build -VerifyProduct
 .\proto\run.ps1 -VerifyFx
 .\proto\verify-shell-ui.ps1
-dotnet run --project proto/Noot.StorageChecks/Noot.StorageChecks.csproj
+dotnet run --project proto/Scrunch.StorageChecks/Scrunch.StorageChecks.csproj
 ```
 
 The matrix uses only `product-check-shell-visual`; ordinary notes and interactive
@@ -241,7 +243,7 @@ the next small branding task is a dedicated simple paper mark.
 
 Historical build: `artifacts/scrunch-shell/Scrunch.exe`.
 All sections after this milestone are historical evidence for their named builds.
-The pre-existing NootFX work was checkpointed separately as `bd4a409` before
+The pre-existing ScrunchFX work was checkpointed separately as `bd4a409` before
 shell implementation began.
 
 ### Implemented and checked
@@ -261,7 +263,7 @@ shell implementation began.
 - **16 storage checks passed**, including new defaults across reopen, legacy
   version-1 files without defaults, null/unknown optional defaults, Unicode,
   exclusive writer lock, backup recovery and failed-save preservation.
-- **62 native NootFX lifecycle checks passed** in `fx-verification.json`,
+- **62 native ScrunchFX lifecycle checks passed** in `fx-verification.json`,
   including repeated discard, undo/cancellation, 13-note idle, real display
   capture, injected graphics failures, renderer recovery, reduced motion and
   closed-note/view collection. The FX code and prepared assets were unchanged.
@@ -301,10 +303,10 @@ No new graphics-quality or performance claim is made by this shell milestone.
 ### Reproduce
 
 ```powershell
-dotnet build proto/Noot.Proto/Noot.Proto.csproj -p:Platform=x64 -o proto/artifacts/scrunch-shell
-dotnet run --project proto/Noot.StorageChecks/Noot.StorageChecks.csproj
-dotnet run --project proto/Noot.GeometryChecks/Noot.GeometryChecks.csproj
-dotnet run --project proto/Noot.FxChecks/Noot.FxChecks.csproj
+dotnet build proto/Scrunch/Scrunch.csproj -p:Platform=x64 -o proto/artifacts/scrunch-shell
+dotnet run --project proto/Scrunch.StorageChecks/Scrunch.StorageChecks.csproj
+dotnet run --project proto/Scrunch.GeometryChecks/Scrunch.GeometryChecks.csproj
+dotnet run --project proto/Scrunch.FxChecks/Scrunch.FxChecks.csproj
 .\proto\run.ps1 -VerifyProduct
 .\proto\run.ps1 -VerifyFx
 .\proto\run.ps1 -Verify
@@ -323,7 +325,7 @@ and background/close behaviour before adding opt-in sign-in startup.
 
 ## Paper motion polish, 8 September 2026
 
-Current executable: `artifacts/paper-polish-checked/Noot.Proto.exe`, selected by
+Current executable: `artifacts/paper-polish-checked/Scrunch.exe`, selected by
 `run.ps1`. Sections below describe historical builds.
 
 The mesh host now fills the padded window instead of the flat paper rectangle.
@@ -344,10 +346,10 @@ and keyboard discard remain immediate.
 - Actual native captures on a neutral temporary review window show the strong
   bend extending past the old paper bounds and held crumple stages at 35%, 70%
   and 100%. Capture files respectively:
-  `C:/Users/Nick/AppData/Local/Temp/noot-polish-inspect-525456.png`,
-  `C:/Users/Nick/AppData/Local/Temp/noot-polish-inspect-394652.png`,
-  `C:/Users/Nick/AppData/Local/Temp/noot-polish-inspect-329146.png`,
-  `C:/Users/Nick/AppData/Local/Temp/noot-polish-inspect-329210.png`.
+  `%TEMP%/scrunch-polish-inspect-525456.png`,
+  `%TEMP%/scrunch-polish-inspect-394652.png`,
+  `%TEMP%/scrunch-polish-inspect-329146.png`,
+  `%TEMP%/scrunch-polish-inspect-329210.png`.
   Reproduce with `--verify-product --inspect-material` (isolated data).
 
 The crumple is still a stylised surface approximation without self-collision.
@@ -358,7 +360,7 @@ seconds; it is not a production memory budget or GPU measurement.
 
 ## Discard-menu and white-outline correction
 
-Current executable: `artifacts/window-fix-checked/Noot.Proto.exe`, selected by
+Current executable: `artifacts/window-fix-checked/Scrunch.exe`, selected by
 `run.ps1`. Earlier sections below describe historical builds, not current defaults.
 
 The direct renderer tests missed the actual flyout lifecycle and the temporary
@@ -381,7 +383,7 @@ The Windows 11 branch has not been exercised on this Windows 10 machine.
   frameless styles.
 - Actual screen capture of the pinned isolated test note confirms readable text,
   transparent surroundings, and removal of the white outer rectangle:
-  `C:/Users/Nick/AppData/Local/Temp/codex-shot-2026-09-07_23-12-45.png`.
+  `%TEMP%/codex-shot-2026-09-07_23-12-45.png`.
   Earlier captures were obscured or the note had already been discarded and do
   not support the border conclusion.
 - Reports are in `artifacts/window-fix-checked/`. The opt-in
@@ -399,7 +401,7 @@ hands-on checks. Crumple remains a stylised mesh approximation.
 
 ## Crumple-and-throw build
 
-Current executable: `artifacts/discard-checked/Noot.Proto.exe` (also selected by
+Current executable: `artifacts/discard-checked/Scrunch.exe` (also selected by
 `run.ps1`). Right-click the note's top edge and choose Discard note. The mesh
 contracts into a corrugated bundle and follows a short throw with a terminal fade.
 The animation reuses the written note's snapshot; no replacement ball asset is used.
@@ -429,8 +431,8 @@ Centre to restore it. `--verify --inspect-crumple` selects a held pose after che
 
 Desktop captures did not expose the held bench unobstructed while the desktop was
 being used. They do not validate the crumple appearance. Inspection capture paths:
-`C:/Users/Nick/AppData/Local/Temp/codex-shot-2026-09-07_22-55-15.png` and
-`C:/Users/Nick/AppData/Local/Temp/codex-shot-2026-09-07_22-58-51.png`.
+`%TEMP%/codex-shot-2026-09-07_22-55-15.png` and
+`%TEMP%/codex-shot-2026-09-07_22-58-51.png`.
 UIA slider input also failed with `Requested property was not in the CacheRequest`.
 Automated smoothness, mouse gestures, mixed-DPI behaviour and long-session resource
 use remain unverified. Reports: `artifacts/discard-checked/product-verification.json`
@@ -438,8 +440,8 @@ and `artifacts/discard-checked/verification.json`.
 
 ## Everyday product build
 
-Executable: `artifacts/product-checked/Noot.Proto.exe`. Default launch now opens
-the small Noot control window and restores local notes; `--bench` opens the paper
+Executable: `artifacts/product-checked/Scrunch.exe`. Default launch now opens
+the small Scrunch control window and restores local notes; `--bench` opens the paper
 comparison. The earlier paper-only report below remains historical evidence.
 
 - Debug x64 build: zero warnings and errors.
@@ -461,8 +463,8 @@ must not depend on receiving an activation event, and programmatic discard must
 commit explicitly rather than relying on the system-only AppWindow.Closing event.
 
 Reports are in `artifacts/product-checked/`. Product test notes use an isolated
-`product-check-*` directory there, not the real `%LOCALAPPDATA%\Noot` directory.
-Storage checks retain evidence in a unique `noot-storage-check-*` temporary folder.
+`product-check-*` directory there, not the real `%LOCALAPPDATA%\Scrunch` directory.
+Storage checks retain evidence in a unique `scrunch-storage-check-*` temporary folder.
 
 The renderer regression's short 3-second Debug sample was 156.8 MB / 8.29% of one
 CPU core. It is too short and startup-adjacent to establish an idle budget. No
@@ -525,9 +527,9 @@ and its range-value action failed with a UIA cache error. Programmatic integrati
 checks are therefore not presented as successful automated mouse tests.
 
 The screenshot fallback captured actual screen pixels. Some captures contain
-overlapping windows; only visible Noot regions support the visual observations.
+overlapping windows; only visible Scrunch regions support the visual observations.
 The final screenshot is at:
-`C:/Users/Nick/AppData/Local/Temp/codex-shot-2026-09-07_16-24-12.png`.
+`%TEMP%/codex-shot-2026-09-07_16-24-12.png`.
 
 A thin native outline is still visible around the floating window. Transparent
 padding pass-through, continuous mouse dragging/resizing, mixed-DPI monitors and

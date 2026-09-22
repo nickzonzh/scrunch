@@ -1,5 +1,5 @@
 param([Parameter(Mandatory)][int]$AppPid,
-      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/nootfx-polish-ui'))
+      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/scrunchfx-polish-ui'))
 $ErrorActionPreference = 'Stop'
 $cli = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
@@ -12,7 +12,7 @@ if (!$main -or (Note)) { throw 'Use a fresh isolated --fx-lab, with no existing 
 $checks = [Collections.Generic.List[string]]::new()
 function Wait-Overlay {
     for ($i=0; $i -lt 40; $i++) {
-        $hwnd = (Windows | Where-Object title -eq 'NootFX paper').hwnd
+        $hwnd = (Windows | Where-Object title -eq 'ScrunchFX paper').hwnd
         if ($hwnd) { return $hwnd }; Start-Sleep -Milliseconds 100
     }
     throw 'Overlay did not appear'
@@ -43,7 +43,7 @@ try {
         Ui invoke FxHold -w $main | Out-Null
         Ui invoke FxDelete -w $main | Out-Null
         Start-Sleep -Milliseconds 1400
-        if ((Note) -or (Windows | Where-Object title -eq 'NootFX paper')) { throw 'Normal deletion did not finish' }
+        if ((Note) -or (Windows | Where-Object title -eq 'ScrunchFX paper')) { throw 'Normal deletion did not finish' }
         Undo-And-Assert $expected
         $checks.Add("$sample`: scrub capture, normal deletion and undo preserve native text")
     }
@@ -61,7 +61,7 @@ try {
         Start-Sleep -Milliseconds 1200
         Ui invoke FxDelete -w $main | Out-Null
         if (!$recording.WaitForExit(($duration+10)*1000) -or $recording.ExitCode -ne 0) { throw 'Recording failed' }
-        if ((Note) -or (Windows | Where-Object title -eq 'NootFX paper')) { throw 'Recorded deletion did not finish' }
+        if ((Note) -or (Windows | Where-Object title -eq 'ScrunchFX paper')) { throw 'Recorded deletion did not finish' }
         Undo-And-Assert $expected
         $checks.Add("$mode playback recorded and completed; undo preserved text")
     }

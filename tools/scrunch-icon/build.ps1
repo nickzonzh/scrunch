@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
-$assetDirectory = Join-Path $PSScriptRoot '../../proto/Noot.Proto/Assets'
+$assetDirectory = Join-Path $PSScriptRoot '../../proto/Scrunch/Assets'
 [xml]$source = Get-Content (Join-Path $PSScriptRoot 'scrunch.svg') -Raw
 $sizes = @(16,20,24,32,40,48,64,128,256)
 $frames = @()

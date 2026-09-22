@@ -1,5 +1,5 @@
 param([Parameter(Mandatory)][int]$AppPid,
-      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/nootfx-ui'))
+      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/scrunchfx-ui'))
 $ErrorActionPreference = 'Stop'
 $cli = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
@@ -22,7 +22,7 @@ function Assert-Editor([long]$window, [string]$expected) {
 try {
     Ui invoke NewNote -w $main | Out-Null
     $note = (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd
-    $text = "NOOT FX / 21 SEPTEMBER`nActual native ink.`n`nRemember the green notebook."
+    $text = "SCRUNCH FX / 21 SEPTEMBER`nActual native ink.`n`nRemember the green notebook."
     Ui set-value NoteText $text -w $note | Out-Null
     Assert-Editor $note $text
     $checks.Add('Created a real native note; editor value matches identifying text')
@@ -34,7 +34,7 @@ try {
     $overlay = $null
     for ($i=0; $i -lt 30 -and !$overlay; $i++) {
         Start-Sleep -Milliseconds 100
-        $overlay = (Windows | Where-Object title -eq 'NootFX paper').hwnd
+        $overlay = (Windows | Where-Object title -eq 'ScrunchFX paper').hwnd
     }
     if (!$overlay) { throw 'No native D3D overlay appeared' }
     $index = 2
@@ -55,23 +55,23 @@ try {
     Ui invoke FxDelete -w $main | Out-Null
     Start-Sleep -Milliseconds 1300
     if (Windows | Where-Object hwnd -eq $note) { throw 'Deleted note window remains' }
-    if (Windows | Where-Object title -eq 'NootFX paper') { throw 'FX overlay remains visible after completion' }
+    if (Windows | Where-Object title -eq 'ScrunchFX paper') { throw 'FX overlay remains visible after completion' }
     $checks.Add('Normal-speed delete closes the real note and hides the overlay')
     Ui invoke 'Undo last discard' -w $main | Out-Null
     $restored = (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd
-    Ui set-value NoteText 'Editing still works after NootFX.' -w $restored | Out-Null
-    Assert-Editor $restored 'Editing still works after NootFX.'
+    Ui set-value NoteText 'Editing still works after ScrunchFX.' -w $restored | Out-Null
+    Assert-Editor $restored 'Editing still works after ScrunchFX.'
     $checks.Add('Completed discard remains recoverable; normal editing works afterward')
     # A focused native TextBox can consume Delete before parent accelerators.
     # Exercise actual key delivery, not a direct call to the discard method.
     Ui click NoteText -w $restored | Out-Null
     Ui send-keys 'ctrl+shift+delete' -w $restored --via send-input | Out-Null
     Start-Sleep -Milliseconds 150
-    if ((Windows | Where-Object hwnd -eq $restored) -or (Windows | Where-Object title -eq 'NootFX paper')) { throw 'Keyboard discard did not close immediately' }
+    if ((Windows | Where-Object hwnd -eq $restored) -or (Windows | Where-Object title -eq 'ScrunchFX paper')) { throw 'Keyboard discard did not close immediately' }
     $checks.Add('Ctrl+Shift+Delete from the focused native editor closes without an FX overlay')
     Ui invoke 'Undo last discard' -w $main | Out-Null
     $restored = (Windows | Where-Object title -eq 'Scrunch note' | Select-Object -Last 1).hwnd
-    Assert-Editor $restored 'Editing still works after NootFX.'
+    Assert-Editor $restored 'Editing still works after ScrunchFX.'
     $checks.Add('Keyboard discard is recoverable with the exact text')
     Ui screenshot -w $main --capture-screen -o (Join-Path $OutputDirectory '06-after.png') | Out-Null
     @{ passed=$true; checks=$checks; computerUseVerified=$false; note='WinApp UI Automation only; inspect the screenshots separately.' } |

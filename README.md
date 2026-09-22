@@ -1,185 +1,85 @@
 # Scrunch
 
-Beautiful little reminders that stay where you put them. C# / WinUI 3 / Windows
-Composition, with native text editing and tactile paper. No browser runtime,
-accounts or cloud services. Native deletion graphics use Vortice Direct3D 11.
+Tiny native Windows desktop notes with tactile paper and a satisfying crumple.
 
-## Run the everyday app
+![Scrunch with synthetic example notes](docs/media/scrunch-desktop.png)
 
-```powershell
-.\proto\run.ps1
-```
+## What it is
 
-Use `-Build` to rebuild after closing this build. Requires .NET 9 and the Windows
-build tools. Executable: `proto/artifacts/scrunch-compact/Scrunch.exe`.
+Independent notes that stay where you put them, built with WinUI and native
+Windows graphics. Create a note from anywhere, keep Scrunch in the tray, and
+scrunch a finished note away. Undo brings it back, including after a restart.
+No account, cloud sync, telemetry or analytics service.
 
-- **New note**, or **Ctrl+Alt+N** from anywhere while Scrunch is running. New notes
-  focus the editor immediately; typing never waits for an animation.
-- Drag the top edge; resize with the lower-right corner.
-- Right-click the top edge for six paper colours, three motion personalities,
-  reduced motion, optional always-on-top, and discard.
-- **Ctrl+N** creates another note from a note. **Ctrl+Shift+Delete** discards it.
-  **Ctrl+Shift+Z**, or **Undo last discard** in Scrunch, restores the latest discard.
-  Ordinary Ctrl+Z stays available for undoing text edits.
-- Discard from the top-edge menu for a quick crumple-and-throw. Keyboard discard
-  and reduced motion stay immediate. Undo can interrupt the effect. The note is
-  saved as recoverable before any animation begins.
-- Search the home panel by any text in a note; select a row to bring its native
-  window forward. **Ctrl+F** focuses search; **Escape** clears it. **Ctrl+N** also
-  works in the home panel. Rows stay in newest-created order as you edit.
-- **Settings** opens a separate native view for new-note colour, always-on-top
-  and reduced-motion defaults. Existing notes retain their individual settings.
-  Windows' animation preference is still respected. Settings also shows shortcut
-  availability, version, and **Open data folder**.
-- Scrunch lives in the notification area. Left-click its paper icon to open the
-  existing shell near the tray; click away to dismiss it. Right-click for **New
-  note**, **Show notes**, **Undo last discard**, **Settings**, or **Quit**.
-- Closing the shell hides it and leaves notes and Ctrl+Alt+N working. **Quit**
-  saves and exits; active notes return on next launch. Closing an individual
-  note still discards it recoverably. Launching Scrunch again reveals the running
-  shell. **Open Scrunch** in a note's top-edge menu also restores it.
+## Install
 
-The home panel is a 400-DIP-wide native utility that fits its content (329 DIP
-high for three notes, plus a 32-DIP integrated caption), with a bounded scrolling
-note list and tuned native Desktop Acrylic
-Thin where Windows supports it. Inter Variable defines the shell and
-Drawably Pen defines paper content, with Windows script/emoji fallbacks. Floating paper
-notes remain the workspace. Playful paper, yellow and unpinned remain the initial
-defaults. A shortcut conflict is shown in the home panel and Settings; local
-creation still works. The global shortcut requires Scrunch to be running.
+Windows 10 version 1809 or later, x64. Windows 11 is supported by the dependencies;
+see the [verification report](docs/RELEASE-VERIFICATION.md) for tested hardware.
 
-See [shell typography, material and sizing](proto/SHELL-POLISH.md) for font notices,
-fallback architecture and native desktop verification details.
+Download `Scrunch-0.1.0-Setup.exe` from [Releases](https://github.com/nickzonzh/scrunch/releases).
+The installer uses `%LOCALAPPDATA%\Programs\Scrunch`, needs no administrator
+rights, and adds Scrunch to the Start Menu. Quit Scrunch before installing an
+update. Uninstalling removes the app and its startup entry, while keeping notes.
 
-## Naming and compatibility
+The ZIP contains the same self-contained application. Extract it completely and
+run `Scrunch.exe`. Portable means no installation; notes still use your Windows
+profile, and start at sign-in is available only in an installed copy.
 
-Product UI, window titles, executable (`Scrunch.exe`), assembly metadata and
-manifest display names now use **Scrunch**. The checkout folder, source project
-`proto/Noot.Proto/Noot.Proto.csproj`, `Noot_Proto` namespace, check-project names
-and internal **NootFX** subsystem/assets deliberately retain their technical
-names. This avoids churn in compiled XAML, graphics assets and existing tools.
-Package identity is unchanged. The executable, shell and notification icon now use
-the editable [Scrunch paper mark](tools/scrunch-icon/scrunch.svg).
+The initial binaries are unsigned. Windows may show an unknown-publisher or
+SmartScreen warning. Check the release source and `SHA256SUMS.txt`; signing is not
+configured. Do not disable Windows security features to install Scrunch.
 
-See [tray implementation and verification](proto/TRAY.md) for native lifecycle,
-positioning, single-instance routing, desktop evidence and hardware limitations.
-Launch-at-sign-in is deferred while the executable lives in a movable build folder;
-no startup entry is installed. The `--startup` launch argument already supports a
-quiet shell with restored notes for a future explicit opt-in.
+## Usage
 
-Saved notes deliberately remain in `%LOCALAPPDATA%\Noot`. No files are moved,
-so existing notes, recovery backups and the exclusive writer lock still work.
-Optional new-note defaults are stored in the same version-1 document; files from
-before this milestone load with the original defaults. Historical verification
-sections retain their original build paths and product names as evidence.
+- **Ctrl+Alt+N** creates a note while Scrunch is running.
+- Drag the note's top edge; resize from its lower-right corner.
+- Right-click the top edge for colour, motion, pinning and discard.
+- A menu discard crumples the paper. **Ctrl+Shift+Delete** discards immediately.
+- **Ctrl+Shift+Z** or **Undo last discard** restores the latest discarded note.
+- Click the tray icon to open Scrunch; right-click for New note, Show notes,
+  Undo, Settings and Quit. Closing the shell keeps notes and the shortcut active.
+- In Settings, **Start Scrunch when I sign in** is off until you enable it.
+  Sign-in restores notes with the shell hidden.
 
-## Saving and recovery
+[Watch a short discard demonstration](docs/media/scrunch-discard.mp4).
+[Dark shell example](docs/media/scrunch-dark.png).
 
-Data lives in `%LOCALAPPDATA%\Noot\notes.json`. Text, colour, personality, reduced
-motion, pinning, paper size and physical window position are saved in bounded
-350ms batches. The timer stops after saving. A normal quit flushes pending edits;
-an abrupt process kill or power loss can lose the latest unsaved batch.
+## Data and privacy
 
-Each save flushes a temporary file before atomic replacement, keeping the previous
-successful snapshot in `notes.json.bak`. A damaged primary can recover from that
-backup with a visible warning; the damaged input is preserved on the next save.
-Unreadable data without a usable backup, or a newer file schema, is left untouched.
-Save failures are shown with a retry action and prevent normal quit/discard.
-An exclusive session lock prevents simultaneous writers.
+Notes and preferences live in `%LOCALAPPDATA%\Scrunch\notes.json`, with a previous
+snapshot in `notes.json.bak`. Earlier installations are copied safely into the new
+folder on first launch; the original notebook remains intact. Existing destination
+notes are never overwritten. See [migration and recovery](docs/RELEASING.md#data-and-upgrades).
 
-Discarded notes remain in the local file and can be restored, including after a
-restart. There is no automatic expiry or permanent-delete UI in this build.
-If a monitor is missing, startup placement is clamped to a nearby work area so
-the paper remains reachable. Full mixed-DPI and monitor docking tests are pending.
+Text saves in short batches and flushes on Quit. Discarded notes remain recoverable
+locally; there is no automatic expiry or permanent-delete control. Back up the data
+folder if you want another copy. Scrunch has no network features or account.
 
-## Native NootFX deletion slice
+## Build from source
 
-Floating notes now use a shared, lazy D3D11 renderer for animated menu discard:
-the actual XAML note is captured, one of three Scrunch-owned prepared paper bakes
-deforms it on the GPU, and a restrained throw finishes the discard. Corner Crush,
-Side Scrunch and Centre Collapse have distinct fold trajectories. An explicit
-seed selects geometry-only reflections, timing and release variation. Note text
-is never mirrored. Normal editing and the existing
-pickup/peel renderer remain native WinUI. Keyboard discard and reduced motion
-remain immediate. Graphics failures fall back to the saved, recoverable discard.
-Filtered fold shadows, 4x edge smoothing and a single fade of the assembled paper
-keep the crumple readable. Playback takes 722–798ms: gather, brief hold, then throw.
+Use Windows, the [.NET SDK](https://dotnet.microsoft.com/download) version pinned
+in `global.json`, and Node.js 22 for the asset checks. NuGet restores the Windows
+build tools; Visual Studio is optional. Run from PowerShell:
 
 ```powershell
-.\proto\run.ps1 -Build -FxLab     # DEBUG-only, isolated notes, slow/scrub controls
-.\proto\verify-fx-seeds-ui.ps1 -AppPid <pid> -Record -Aspects
-.\proto\run.ps1 -VerifyFx        # DEBUG-only native lifecycle/performance checks
-dotnet run --project proto/Noot.FxChecks/Noot.FxChecks.csproj
+./proto/run.ps1 -Build                # everyday Debug app
+./tools/check.ps1 -Locked            # headless regression suites
+./tools/release.ps1                  # Release ZIP, installer and SHA-256 hashes
 ```
 
-The lab offers seed input, previous/next seed, next QA seed, selected family/orientation,
-exact replay, production speed, slow playback and held deformation. Its Delete
-latest test note command uses the ordinary saved-discard path. Hold deformation
-and the slider inspect the bake; uncheck Hold to finish.
-Matte fill keeps opposing folds lighter, while the main collapse has 19% more
-reading time without increasing total playback. The lab displays gather, hold
-and exit durations; the QA button cycles the fixed 18-seed suite.
-The hold automatically ends after 60 seconds. None of these controls appears in
-the everyday app or Release builds. See [NootFX implementation and verification](proto/NOOTFX.md)
-for architecture, provenance, measured results and outstanding verification.
-The lab also offers six size/colour/content samples and screen-corner placement.
-`proto/fx-golden-seeds.json` defines 18 fixed QA seeds, including every family and
-reflection plus the timing extremes. The seed verification script captures those
-poses, six paper samples and actual production-speed discard/Undo recordings.
-`node tools/nootfx-assets/author.mjs --check` verifies reproducible owned bakes.
+The release script retrieves a pinned, signed Inno Setup compiler into the ignored
+`tools/.cache` folder when needed. Build output goes to `artifacts/release/0.1.0`.
 
-## Paper comparison bench
+## Development and verification
 
-```powershell
-.\proto\run.ps1 -Bench
-```
+See [release engineering](docs/RELEASING.md), [native verification](proto/VERIFICATION.md),
+[tray lifecycle](proto/TRAY.md), and [ScrunchFX](proto/SCRUNCHFX.md). Desktop tests
+need an unlocked interactive Windows session and use synthetic notes. GitHub Actions
+runs the headless checks and prepares a draft release on a version tag; native
+acceptance is required before publishing it.
 
-The original bench remains separate. Its floating test notes are **temporary** and
-never enter your saved notes. Compare Stationery, Playful paper and Animated using
-Pick up / Put down, drag interruption, the bend-inspection slider, colours, light
-and dark backgrounds, and reduced motion. Windows' animation setting is respected.
-Use **Crumple and throw** to replay completion, **Inspect the crumple** to hold a
-pose, and **Centre** to restore the paper. The crumple deforms the actual text
-texture into a corrugated bundle; it does not swap in a pre-rendered ball. Its
-190ms gather overlaps a 180ms throw starting at 100ms, for a 280ms effect. Opening a note's menu
-prepares its snapshot, and discard starts after the menu finishes closing. Focus
-restoration cannot cancel it. A cold capture gets up to 1.5 seconds before falling
-back to immediate discard; keyboard discard never waits for capture.
+## Licence
 
-The renderer uses 288 connected projective patches with cylindrical bending,
-asymmetric flex, diagonal crumple creases, smoothly blended directional lighting
-and unprinted back faces. Its drawing surface includes the surrounding padding
-so moving paper can extend beyond its flat bounds. A cached snapshot
-of the native editor is shared across patches during motion and refreshed when
-content changes. Geometry callbacks stop when the spring settles. This is a bent
-paper approximation, not a cloth solver.
-
-## Verify
-
-```powershell
-dotnet run --project proto/Noot.StorageChecks/Noot.StorageChecks.csproj
-dotnet run --project proto/Noot.GeometryChecks/Noot.GeometryChecks.csproj
-.\proto\run.ps1 -VerifyProduct
-.\proto\run.ps1 -Verify
-```
-
-Product verification uses a unique `product-check-*` data folder beside the
-executable, writes `product-verification.json`, and exits. It never opens your real
-notes. For an isolated, restartable manual shell session, use `.\proto\run.ps1 -ShellPreview`
-(Debug only). Its data stays beside the executable in `product-check-shell-preview`.
-Paper verification writes `verification.json` and leaves the bench open for
-inspection. These are programmatic native integration checks, not mouse-gesture
-or screenshot assertions. See `proto/VERIFICATION.md` for evidence and limitations.
-
-## Next
-
-- Everyday feel testing of the three seeded discard families. The current
-  bundles deliberately use a stylised approximation without self-collision.
-- Better contact shadows and resting material; human feel testing over days.
-- Transparent-padding pass-through and deformed-silhouette hit testing.
-- Verify the frameless popup treatment on Windows 11 and mixed-DPI monitors; the
-  white outline is removed on the tested Windows 10 desktop.
-- Next product milestone: tray access and deliberate background/close behaviour,
-  followed by opt-in launch at sign-in. Keep the current small home panel.
-- Multi-monitor, DPI changes, sustained typing, long-session memory and frame-pacing
-  measurements. No production memory budget or GPU-performance claim yet.
+[MIT](LICENSE). Bundled fonts and dependencies retain their own terms; see
+[third-party notices](THIRD_PARTY_NOTICES.md). ScrunchFX assets and the paper icon
+are generated from source included in this repository.

@@ -1,9 +1,9 @@
 param([Parameter(Mandatory)][int]$AppPid,
-      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/nootfx-signature-ui'),
+      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/scrunchfx-signature-ui'),
       [uint[]]$Seeds = (Get-Content (Join-Path $PSScriptRoot 'fx-golden-seeds.json') | ConvertFrom-Json).seeds,
       [switch]$Record, [switch]$Aspects)
 $ErrorActionPreference = 'Stop'
-$cli = 'C:\Users\Nick\.nuget\packages\microsoft.windows.sdk.buildtools.winapp\0.6.1\tools\win-x64\winapp.exe'
+$cli = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 function Ui { $r = & $cli ui @args; if ($LASTEXITCODE) { throw "WinApp failed: $args`n$r" }; return $r }
 function Windows { return (Ui list-windows -a $AppPid --json | ConvertFrom-Json) }
@@ -12,14 +12,14 @@ $main = (Windows | Where-Object title -eq 'Scrunch — isolated FX lab').hwnd
 if (!$main) { throw 'Expected an isolated FX lab' }
 function Wait-Overlay {
     for ($i=0; $i -lt 40; $i++) {
-        $hwnd = (Windows | Where-Object title -eq 'NootFX paper').hwnd
+        $hwnd = (Windows | Where-Object title -eq 'ScrunchFX paper').hwnd
         if ($hwnd) { return $hwnd }; Start-Sleep -Milliseconds 100
     }
     throw 'Overlay did not appear'
 }
 function Wait-Idle {
     for ($i=0; $i -lt 50; $i++) {
-        if (!(Windows | Where-Object title -eq 'NootFX paper')) { return }
+        if (!(Windows | Where-Object title -eq 'ScrunchFX paper')) { return }
         Start-Sleep -Milliseconds 100
     }
     throw 'Overlay failed to become dormant'
@@ -28,7 +28,7 @@ $checks = [Collections.Generic.List[string]]::new()
 try {
     # Use a fresh lab: defaults are slow on, hold off. Maximize provides a
     # neutral desktop backdrop; every capture remains an actual native frame.
-    if (Windows | Where-Object title -eq 'NootFX paper') { throw 'Start with an idle, fresh lab' }
+    if (Windows | Where-Object title -eq 'ScrunchFX paper') { throw 'Start with an idle, fresh lab' }
     Ui invoke Maximize-Restore -w $main | Out-Null
     Ui invoke FxSlow -w $main | Out-Null
     if (!(Note)) { Ui invoke FxSample -w $main | Out-Null; Start-Sleep -Milliseconds 300 }
