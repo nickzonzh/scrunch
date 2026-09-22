@@ -86,6 +86,36 @@ machine's original startup values after testing. Also extract and run the exact 
 Hash the distributed files after all changes. Any changed payload requires another
 artifact smoke test; an intermediate publish run does not count.
 
+With no existing personal installation and all Scrunch processes quit:
+
+```powershell
+./tools/verify-installation.ps1
+```
+
+This installs, exercises and uninstalls the final local installer, saving evidence
+under `artifacts/installed-verification`. It temporarily changes only Scrunch's
+startup values and restores their original state in `finally`. It refuses to
+overwrite an existing installation unless explicitly identified as a prior test.
+
+For interactive tray acceptance, install the final artifact and run in an unlocked,
+foregroundable Windows desktop session:
+
+```powershell
+./proto/verify-tray-ui.ps1 -BuildDirectory "$env:LOCALAPPDATA/Programs/Scrunch" -DataDirectory "$PWD/artifacts/manual-tray-data" -EvidenceDirectory "$PWD/artifacts/manual-tray-evidence"
+```
+
+For the separate programmatic native-menu check, use:
+
+```powershell
+./tools/verify-tray-callbacks.ps1 -Executable "$env:LOCALAPPDATA/Programs/Scrunch/Scrunch.exe" -DataDirectory "$PWD/artifacts/callback-tray-data" -EvidenceDirectory "$PWD/artifacts/callback-tray-evidence"
+```
+
+For manual crumple acceptance, launch that installed executable with a process-only
+`SCRUNCH_DATA_DIRECTORY` pointing at a synthetic notebook. Create and edit a note,
+right-click its top edge, choose Discard note, observe the crumple finish, then Undo
+and confirm the original text returns. Quit and uninstall the test copy afterwards.
+Never substitute personal data for a blocked desktop automation test.
+
 ## Publishing
 
 1. Review `docs/RELEASE-VERIFICATION.md` and complete every outstanding release gate.
