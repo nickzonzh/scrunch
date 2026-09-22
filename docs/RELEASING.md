@@ -138,10 +138,20 @@ Never substitute personal data for a blocked desktop automation test.
 7. Make the repository public only when ready (it was private during preparation).
    Review and publish the draft after acceptance. No automatic public publication.
 
-Manual alternative after pushing the tag:
+To publish the already tested local binaries, wait until the tag workflow has
+created its draft, then replace its rebuilt assets with the exact files whose
+hashes appear in the verification report:
 
 ```powershell
-gh release create v0.1.0 ./artifacts/release/0.1.0/Scrunch-0.1.0-Setup.exe ./artifacts/release/0.1.0/Scrunch-0.1.0-win-x64.zip ./artifacts/release/0.1.0/SHA256SUMS.txt --verify-tag --draft --title "Scrunch 0.1.0" --notes-file docs/releases/0.1.0.md
+gh release upload v0.1.0 ./artifacts/release/0.1.0/Scrunch-0.1.0-Setup.exe ./artifacts/release/0.1.0/Scrunch-0.1.0-win-x64.zip ./artifacts/release/0.1.0/SHA256SUMS.txt --repo nickzonzh/scrunch --clobber
+```
+
+When deliberately ready for public OSS publication, review the draft assets and
+notes, then run these owner-controlled final steps (they are not run by the build):
+
+```powershell
+gh repo edit nickzonzh/scrunch --visibility public --accept-visibility-change-consequences
+gh release edit v0.1.0 --repo nickzonzh/scrunch --draft=false
 ```
 
 Only x64 is released. ARM64 remains an unverified source target; no ARM64 or x86

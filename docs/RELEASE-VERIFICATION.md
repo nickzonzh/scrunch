@@ -6,27 +6,20 @@ media fixtures. The repository remains private; no release has been published.
 
 ## Acceptance status
 
-Packaging, installation lifecycle, portable launch, persistence, startup controls
-and native tray commands pass. **One desktop acceptance gate remains:** complete
-the physical tray interaction suite and observe menu-triggered animated discard
-and Undo on the final installed artifact in a foregroundable desktop session.
-The current automation session refuses physical input because Scrunch cannot
-obtain foreground focus. Do not interpret programmatic tray checks or Debug FX
-checks as passing that physical-input gate.
+**Release engineering and local x64 acceptance are complete.** The exact local
+installer and ZIP identified below pass installation, persistence, startup, tray,
+crumple/Undo and cleanup checks. No known release blocker remains for these
+artifacts on the tested Windows 10 system. Hardware coverage limits are listed
+below; public publication remains a deliberate owner action.
 
-A fresh follow-up attempt used the same final installer and a new synthetic
-notebook. Launch, persisted-note restoration and Explorer's Scrunch icon exposure
-passed; the first physical tray click was again refused because the target was
-not foreground. The test app was quit and the temporary installation removed.
-The physical test script now seeds a missing fixture through the real editor and
-uses OS keyboard input for classic native menu actions, whose UIA provider has no
-InvokePattern. These fixes do not relax the foreground check or replace physical
-input with posted messages. Evidence is in ignored `artifacts/manual-tray-audit2-evidence`.
-
-An earlier installed candidate successfully performed menu discard and Undo.
-The final build changed startup-state handling and executable metadata afterwards;
-it was reinstalled and retested below, but its physical menu/crumple check remains
-pending. There is no known product failure from this input limitation.
+Earlier attempts were blocked by Windows refusing foreground focus. Once that
+desktop condition cleared, the final installer passed all 21 physical tray checks.
+A physical right-click and physical Discard note menu selection triggered the
+real animation; bounded recorded frames show deformation, crumpled paper and the
+empty backdrop. The saved note was marked discarded, and Undo restored the same
+note and original editor text. The tested installed assembly hash matches the
+final packaged payload. Temporary installations and the media backdrop were
+removed afterwards.
 
 ## Final local artifacts
 
@@ -77,6 +70,23 @@ New note, Undo, Show notes, Settings and Quit work through the real native menu;
 Quit removes the icon; quiet startup restores notes and the same icon identity;
 manual activation redirects; footer Quit exits. These use the version-4 callback
 and posted native menu mnemonics, **not physical mouse input**.
+
+`proto/verify-tray-ui.ps1` separately passes **21 physical desktop checks** on the
+same final installer: physical tray left-click, click-away dismissal, right-click
+menu, OS keyboard menu actions, note creation and Undo, Settings, hidden-shell
+global shortcut, tray Quit, icon removal, quiet startup, manual reactivation and
+footer Quit. Its fresh notebook is seeded through the real editor and restored
+after a clean restart. Evidence: `artifacts/manual-tray-final-evidence/checks.json`.
+
+Final installed crumple acceptance used physical mouse input to open the note's
+context menu and select Discard note. A four-second 460×480 recording contains
+120 samples at approximately 30 fps; inspected frames show the actual paper
+deforming, gathering and disappearing. The persisted discard and subsequent Undo
+were checked against the original note ID and editor text. Evidence under
+`artifacts/installed-verification`: `crumple-final-result.json`,
+`crumple-final.mp4`, and the corresponding frame manifest/images. This evidence
+comes from the final installed executable, independently of the public Debug
+fixture demonstration clip.
 
 `tools/verify-portable.ps1` extracted the exact ZIP separately, checked its payload
 and launched it. Its shell
@@ -168,7 +178,7 @@ for the pinned v4 actions; GitHub ran them successfully with its Node 24 overrid
 
 Before publication:
 
-1. Complete the physical-input gate described above against the final installer.
+1. Review the known platform coverage limits and verify the hashes above.
 2. If distributing GitHub's rebuilt artifacts,
    install and smoke-test those exact downloads; local hashes do not identify them.
 3. Follow [the publishing commands](RELEASING.md#publishing), then deliberately
