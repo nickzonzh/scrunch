@@ -26,16 +26,16 @@ Release x64, self-contained .NET and Windows App SDK, ReadyToRun on, trimming of
 
 | Artifact | Bytes | MiB |
 | --- | ---: | ---: |
-| `Scrunch-0.1.0-Setup.exe` | 73,137,722 | 69.75 |
-| `Scrunch-0.1.0-win-x64.zip` | 108,509,673 | 103.48 |
+| `Scrunch-0.1.0-Setup.exe` | 73,122,532 | 69.74 |
+| `Scrunch-0.1.0-win-x64.zip` | 108,509,670 | 103.48 |
 | Published payload, 535 files | 281,256,758 | 268.23 |
 | Installed files, including uninstaller | 285,766,245 | 272.53 |
 
 SHA-256:
 
 ```text
-da2d91fd71903c86772fae20bc9e7e01b3d7d107521da8d97484861e7fa99e33  Scrunch-0.1.0-Setup.exe
-6345f196d8eaf8f3010c3131f82fa42e93bad217670166122ae9310ca5c76b39  Scrunch-0.1.0-win-x64.zip
+e41c5f5aecf1d392b74f6c5ad2947e6cb351b809fdf2e11e1b8806bf4e1284a2  Scrunch-0.1.0-Setup.exe
+941c366c44e505f96a9cb4c183798967683d10a9a6f13efe765fe9bb796e55f1  Scrunch-0.1.0-win-x64.zip
 ```
 
 Executable properties: ProductName `Scrunch`, FileVersion `0.1.0.0`,
@@ -48,7 +48,7 @@ transitive redistributables; it has not been aggressively pruned for size.
 `tools/verify-installation.ps1` installs the final EXE at
 `%LOCALAPPDATA%\Programs\Scrunch`, hashes installed executable/assembly against
 the packaged payload, and uses a process-only isolated notebook directory.
-Its successful run verifies:
+Its successful 26-check run verifies:
 
 - Start Menu launch, visible shell, native note creation, editing and autosave.
 - Closing the shell keeps the resident app and note alive; OS-delivered
@@ -69,7 +69,8 @@ Quit removes the icon; quiet startup restores notes and the same icon identity;
 manual activation redirects; footer Quit exits. These use the version-4 callback
 and posted native menu mnemonics, **not physical mouse input**.
 
-The exact ZIP was extracted separately, payload-checked and launched. Its shell
+`tools/verify-portable.ps1` extracted the exact ZIP separately, checked its payload
+and launched it. Its shell
 and editor work, synthetic text persists, Quit exits, and startup is unavailable
 and off because it is not installed at the registered stable path.
 
@@ -107,16 +108,16 @@ invocation path were exercised.
 
 Final installed Release, visible shell and three idle synthetic notes:
 
-- Private memory: 153,546,752 bytes (146.43 MiB).
-- Working set: 187,879,424 bytes (179.18 MiB).
-- CPU: 15.625 ms across 10.017 seconds, about 0.16% of one logical core.
-- Warm process launch to an observed shell: 447 ms.
-- First New note invocation to an observed note: 219 ms.
+- Private memory: 147,824,640 bytes (140.98 MiB).
+- Working set: 182,661,120 bytes (174.20 MiB).
+- CPU: 15.625 ms across 10.015 seconds, about 0.16% of one logical core.
+- Warm process launch to an observed shell: 394 ms.
+- First New note invocation to an observed note: 206 ms.
 
 The launch/note timings include UI automation polling and command overhead.
 This is one short sample on one machine, not a cold-start or cross-hardware
-benchmark. Raw observations are `final-session.json` and
-`final-performance.json` in the ignored evidence directory.
+benchmark. Raw observations are in `final-performance.json` in the ignored
+evidence directory, including the measured managed-assembly hash.
 
 ## Cleanliness, licences and public media
 
@@ -146,12 +147,20 @@ Frames were inspected for the note, deformation, crumpled paper and empty backdr
 
 The GitHub workflow builds on Windows, runs headless checks, packages and uploads
 the installer/ZIP/checksums. Version tags create a draft release in a separate job
-with narrowly scoped write permission. Remote workflow validation is pending.
+with narrowly scoped write permission. The [clean Windows runner build passed](https://github.com/nickzonzh/scrunch/actions/runs/35671612204)
+for commit `4e30173983be9e94d3270825cc2e70a2d4d7a079`, including all headless checks,
+Release publish, payload validation, installer/ZIP creation and artifact upload.
+The first run exposed a missing ReadyToRun compiler restore on clean machines;
+explicit Release restore fixed it. The local packages above were rebuilt from
+that source and their 26 installation, 12 tray and portable checks rerun.
+The tag-only draft-release job was correctly skipped on manual dispatch and has
+not been exercised with a tag. Hosted Actions emitted a runtime deprecation notice
+for the pinned v4 actions; GitHub ran them successfully with its Node 24 override.
 
 Before publication:
 
 1. Complete the physical-input gate described above against the final installer.
-2. Review a successful GitHub workflow run. If distributing its rebuilt artifacts,
+2. If distributing GitHub's rebuilt artifacts,
    install and smoke-test those exact downloads; local hashes do not identify them.
 3. Follow [the publishing commands](RELEASING.md#publishing), then deliberately
    make the repository public and publish the draft when ready.
