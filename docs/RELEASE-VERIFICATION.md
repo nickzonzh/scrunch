@@ -14,6 +14,15 @@ The current automation session refuses physical input because Scrunch cannot
 obtain foreground focus. Do not interpret programmatic tray checks or Debug FX
 checks as passing that physical-input gate.
 
+A fresh follow-up attempt used the same final installer and a new synthetic
+notebook. Launch, persisted-note restoration and Explorer's Scrunch icon exposure
+passed; the first physical tray click was again refused because the target was
+not foreground. The test app was quit and the temporary installation removed.
+The physical test script now seeds a missing fixture through the real editor and
+uses OS keyboard input for classic native menu actions, whose UIA provider has no
+InvokePattern. These fixes do not relax the foreground check or replace physical
+input with posted messages. Evidence is in ignored `artifacts/manual-tray-audit2-evidence`.
+
 An earlier installed candidate successfully performed menu discard and Undo.
 The final build changed startup-state handling and executable metadata afterwards;
 it was reinstalled and retested below, but its physical menu/crumple check remains
