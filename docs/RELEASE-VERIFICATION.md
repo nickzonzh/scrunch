@@ -133,10 +133,13 @@ the newer Release recording above is separate acceptance evidence.
 
 The Windows workflow restores locked dependencies, runs headless checks, publishes,
 validates the payload and uploads installer/ZIP/checksums. Version tags create a
-draft release in a separate job with narrowly scoped write permission. The prior
-[clean Windows runner build](https://github.com/nickzonzh/scrunch/actions/runs/35671612204)
-passed before these package changes. Current clean-runner verification is pending.
-The tag-only draft-release job has not been exercised with a tag.
+draft release in a separate job with narrowly scoped write permission. The
+[clean Windows runner build](https://github.com/nickzonzh/scrunch/actions/runs/35683399518)
+passed for `b8449abc7cbfffa821c67c33abf722267b93721d` in three minutes, including
+locked restore, all headless checks, publish, size/payload validation, packaging
+and artifact upload. The tag-only draft-release job was correctly skipped; it has
+not been exercised with a tag. Hosted actions emitted the existing Node 20
+deprecation annotation and successfully ran with GitHub's Node 24 override.
 
 Before publication:
 
