@@ -3,7 +3,7 @@
 ## Implementation
 
 The information architecture and native controls are unchanged: Scrunch / New
-note, search, note list, Undo, Settings / Quit. The paper renderer, NootFX code,
+note, search, note list, Undo, Settings / Quit. The paper renderer, ScrunchFX code,
 prepared bakes, note colours and storage schema are unchanged.
 
 The XAML root width is **400 DIP**. The root is measured at that width with unbounded
@@ -115,7 +115,7 @@ and [native system backdrop configuration](https://learn.microsoft.com/windows/a
 The current implementation was rebuilt and rechecked against the full shell brief
 at 23:16 local time on 21 September 2026. No further UI or renderer changes were
 needed. Fresh evidence is in `artifacts/shell-review/`: 45 product checks, 62
-NootFX checks, 25 paper-renderer checks, and six inspected native desktop captures
+ScrunchFX checks, 25 paper-renderer checks, and six inspected native desktop captures
 under `desktop-verification/`. All four translucent cases reported Acrylic
 `Active`, including the latest dark **0.40 / 0.86** palette; the two explicit
 solid cases reported `Forced solid fallback`. The controlled bright/dark
@@ -144,10 +144,10 @@ The integration run switches the entire window theme and
 checks bounded lists, caption separation, creation, editing, search, activation,
 Undo, settings, saving and animated discard. Native system-menu inspection
 confirms Move/Minimize/Close and disabled Size/Maximize. Another running older
-Noot prototype coincided with a real global-shortcut conflict; the fallback notice
+Scrunch prototype coincided with a real global-shortcut conflict; the fallback notice
 was kept visible in captures rather than suppressed for presentation.
 
 Windows 11, mixed-DPI dragging, physical caption-button/drag gestures, real OS
 high-contrast and transparency/power toggles remain unverified. Forced solid
 fallback and per-window themes do not substitute for those checks. No packaging,
-tray, paper renderer, NootFX or note-lifecycle changes are part of this pass.
+tray, paper renderer, ScrunchFX or note-lifecycle changes are part of this pass.

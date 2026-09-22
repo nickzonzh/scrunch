@@ -1,9 +1,13 @@
-param([string]$BuildDirectory = (Join-Path $PSScriptRoot 'artifacts/scrunch-compact'))
+param([string]$BuildDirectory = (Join-Path $PSScriptRoot 'artifacts/scrunch-compact'),
+      [string]$DataDirectory,
+      [string]$EvidenceDirectory)
 $ErrorActionPreference = 'Stop'
 $cli = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
 $exe = Join-Path $BuildDirectory 'Scrunch.exe'
 if (Get-Process Scrunch -ErrorAction SilentlyContinue) { throw 'Quit running Scrunch builds before native tray verification.' }
-$evidence = Join-Path $BuildDirectory 'tray-desktop'
+$evidence = if ($EvidenceDirectory) { $EvidenceDirectory } else { Join-Path $BuildDirectory 'tray-desktop' }
+$originalDataDirectory = $env:SCRUNCH_DATA_DIRECTORY
+if ($DataDirectory) { $env:SCRUNCH_DATA_DIRECTORY = [IO.Path]::GetFullPath($DataDirectory) }
 New-Item -ItemType Directory -Force $evidence | Out-Null
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
@@ -15,6 +19,8 @@ public static class TrayDesktopCheck {
  [DllImport("shell32.dll")] public static extern int Shell_NotifyIconGetRect(ref IconId id,out Rect rect);
  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd,out Rect rect);
  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
+ [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
+ [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
  [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr hwnd,uint message,IntPtr w,IntPtr l);
 }
 '@
@@ -35,36 +41,46 @@ $taskbar = (Windows $explorer.Id | Where-Object className -eq 'Shell_TrayWnd').h
 if(!$taskbar){throw 'Run this verification on the real interactive Windows desktop.'}
 function TraySurface {
     $tree = (Ui inspect -w $taskbar) -join "`n"
-    if ($tree -match 'Button "Scrunch"') { return $taskbar }
+    if ($tree -match 'Button "Scrunch"') { [TrayDesktopCheck]::SetForegroundWindow([IntPtr]$taskbar) | Out-Null; return $taskbar }
     $overflow = (Windows $explorer.Id | Where-Object className -eq 'NotifyIconOverflowWindow').hwnd
-    if ($overflow) {
+    if ($overflow -and [TrayDesktopCheck]::IsWindowVisible([IntPtr]$overflow)) {
         $tree = (Ui inspect -w $overflow) -join "`n"
-        if ($tree -match 'Button "Scrunch"') { return $overflow }
+        if ($tree -match 'Button "Scrunch"') { [TrayDesktopCheck]::SetForegroundWindow([IntPtr]$overflow) | Out-Null; return $overflow }
     }
-    Ui click 'Notification Chevron' -w $taskbar | Out-Null
+    [TrayDesktopCheck]::SetForegroundWindow([IntPtr]$taskbar) | Out-Null
+    Ui invoke 'Notification Chevron' -w $taskbar | Out-Null
     Start-Sleep -Milliseconds 300
     $overflow = (Windows $explorer.Id | Where-Object className -eq 'NotifyIconOverflowWindow').hwnd
     $tree = (Ui inspect -w $overflow) -join "`n"
     if ($tree -notmatch 'Button "Scrunch"') { throw 'Explorer did not expose the Scrunch icon' }
     $tree | Set-Content (Join-Path $evidence 'tray-uia.txt')
+    [TrayDesktopCheck]::SetForegroundWindow([IntPtr]$overflow) | Out-Null
     return $overflow
 }
 function Menu {
     $surface=TraySurface
     Ui click Scrunch -w $surface --right | Out-Null
-    Start-Sleep -Milliseconds 150
-    $menu=(Windows $app.Id | Where-Object className -eq '#32768').hwnd
+    $menu = $null
+    for ($attempt = 0; $attempt -lt 15 -and !$menu; $attempt++) {
+        Start-Sleep -Milliseconds 100
+        $menu=(Windows $app.Id | Where-Object { $_.className -eq '#32768' -and [TrayDesktopCheck]::IsWindowVisible([IntPtr]$_.hwnd) }).hwnd
+    }
     if(!$menu){throw 'Native shortcut menu did not appear'}
     return $menu
 }
 $app = $null
 try {
-    $saved = Get-Content (Join-Path $BuildDirectory 'product-check-tray/notes.json') -Raw | ConvertFrom-Json
+    $notebook = if ($DataDirectory) { Join-Path $DataDirectory 'notes.json' } else { Join-Path $BuildDirectory 'product-check-tray/notes.json' }
+    $saved = Get-Content $notebook -Raw | ConvertFrom-Json
     $expectedNotes = @($saved.Notes | Where-Object { !$_.DeletedAt }).Count
     $app = Start-Process $exe -ArgumentList '--tray-check' -PassThru
     Start-Sleep -Milliseconds 1500
     $main=(Windows $app.Id | Where-Object title -eq 'Scrunch').hwnd
     Check ([bool]$main) 'Cold launch exposes one native shell'
+    $shellRect=[TrayDesktopCheck+Rect]::new()
+    [TrayDesktopCheck]::GetWindowRect([IntPtr]$main,[ref]$shellRect) | Out-Null
+    # Avoid leaving the cursor over taskbar hover flyouts from another test run.
+    [TrayDesktopCheck]::SetCursorPos($shellRect.Left+40,$shellRect.Top+15) | Out-Null
     Check (@(Windows $app.Id | Where-Object title -eq 'Scrunch note').Count -eq $expectedNotes) 'Saved active notes return after a clean quit'
     $surface=TraySurface
     Capture $surface 'tray-actual-size'
@@ -73,7 +89,8 @@ try {
     Start-Sleep -Milliseconds 250
     Check ([TrayDesktopCheck]::IsWindowVisible([IntPtr]$main)) 'Physical tray left-click shows the existing shell'
     Capture $main 'tray-shell'
-    Ui click 'Notification Chevron' -w $taskbar | Out-Null
+    [TrayDesktopCheck]::SetForegroundWindow([IntPtr]$taskbar) | Out-Null
+    Ui invoke 'Notification Chevron' -w $taskbar | Out-Null
     Start-Sleep -Milliseconds 200
     Check (![TrayDesktopCheck]::IsWindowVisible([IntPtr]$main)) 'Physical click away dismisses the tray-opened shell'
     Check (@(Windows $app.Id | Where-Object title -eq 'Scrunch note').Count -eq $expectedNotes) 'Click-away keeps notes visible'
@@ -136,5 +153,6 @@ try {
         $main=(Windows $app.Id | Where-Object title -eq 'Scrunch').hwnd
         if($main){Ui invoke Quit -w $main | Out-Null}
     }
+    $env:SCRUNCH_DATA_DIRECTORY = $originalDataDirectory
 }
 Write-Host "Desktop evidence: $evidence"

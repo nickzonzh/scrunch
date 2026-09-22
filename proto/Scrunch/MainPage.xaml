@@ -1,0 +1,58 @@
+<Page x:Class="Scrunch.MainPage"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="using:Scrunch" Background="#F1EEE8" RequestedTheme="Light">
+ <Grid>
+  <Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+  <ScrollViewer Background="#FAF8F3" VerticalScrollBarVisibility="Auto">
+   <StackPanel Padding="24,28" Spacing="20">
+    <StackPanel Spacing="6"><TextBlock Text="scrunch" FontSize="40" FontWeight="SemiBold" CharacterSpacing="-40" Foreground="#332F28"/>
+     <TextBlock Text="A small study in paper." Foreground="#796F60"/></StackPanel>
+    <TextBlock Text="01 / THE FEEL" FontSize="11" CharacterSpacing="120" Foreground="#887C69"/>
+    <ComboBox x:Name="FeelPicker" SelectedIndex="1" HorizontalAlignment="Stretch" SelectionChanged="Feel_Changed" AutomationProperties.Name="Paper personality">
+     <ComboBoxItem Content="Stationery"/><ComboBoxItem Content="Playful paper"/><ComboBoxItem Content="Animated"/>
+    </ComboBox>
+    <TextBlock x:Name="FeelDescription" Text="Convincing paper. A little personality in your hands." TextWrapping="Wrap" Foreground="#766D5E" FontSize="13"/>
+    <StackPanel Orientation="Horizontal" Spacing="8">
+     <Button Content=" " Width="30" Height="30" CornerRadius="15" Background="#FDEE9E" Tag="yellow" Click="Swatch_Click" AutomationProperties.Name="Yellow paper"/>
+     <Button Content=" " Width="30" Height="30" CornerRadius="15" Background="#F9CFCF" Tag="pink" Click="Swatch_Click" AutomationProperties.Name="Pink paper"/>
+     <Button Content=" " Width="30" Height="30" CornerRadius="15" Background="#C4EBD3" Tag="mint" Click="Swatch_Click" AutomationProperties.Name="Mint paper"/>
+     <Button Content=" " Width="30" Height="30" CornerRadius="15" Background="#C5DFF5" Tag="blue" Click="Swatch_Click" AutomationProperties.Name="Blue paper"/>
+     <Button Content=" " Width="30" Height="30" CornerRadius="15" Background="#D9D2F0" Tag="lavender" Click="Swatch_Click" AutomationProperties.Name="Lavender paper"/>
+    </StackPanel>
+    <TextBlock Text="02 / IN YOUR HANDS" FontSize="11" CharacterSpacing="120" Foreground="#887C69"/>
+    <Button Content="Peel onto the surface" Click="Peel_Click" HorizontalAlignment="Stretch"/>
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="10"/><ColumnDefinition/></Grid.ColumnDefinitions>
+     <Button Content="Pick up" Click="Lift_Click" HorizontalAlignment="Stretch"/>
+     <Button Grid.Column="2" Content="Put down" Click="Release_Click" HorizontalAlignment="Stretch"/>
+    </Grid>
+    <StackPanel Spacing="4"><TextBlock Text="Inspect the bend" FontSize="13" Foreground="#766D5E"/>
+     <Slider x:Name="BendSlider" Minimum="0" Maximum="1" StepFrequency="0.01" ValueChanged="Bend_Changed" AutomationProperties.Name="Inspect paper bend"/>
+    </StackPanel>
+    <ToggleSwitch x:Name="MotionSwitch" Header="Reduced motion" Toggled="Motion_Toggled"/>
+    <Button Content="Crumple and throw" Click="Crumple_Click" HorizontalAlignment="Stretch"/>
+    <StackPanel Spacing="4"><TextBlock Text="Inspect the crumple" FontSize="13" Foreground="#766D5E"/>
+     <Slider x:Name="CrumpleSlider" Minimum="0" Maximum="1" StepFrequency="0.01" ValueChanged="Crumple_Changed" AutomationProperties.Name="Inspect paper crumple"/>
+    </StackPanel>
+    <TextBlock Text="03 / ON YOUR DESKTOP" FontSize="11" CharacterSpacing="120" Foreground="#887C69"/>
+    <Button Content="Try a floating note ↗" Click="Float_Click" HorizontalAlignment="Stretch"/>
+    <TextBlock Text="Right-click its top edge for controls. Test notes are temporary and are not saved." TextWrapping="Wrap" Foreground="#766D5E" FontSize="12"/>
+   </StackPanel>
+  </ScrollViewer>
+  <Grid x:Name="Stage" Grid.Column="1" Background="#E9E5DC">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Grid Margin="28,24"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock Text="THE PAPER BENCH" FontSize="11" CharacterSpacing="160" Foreground="#847965" VerticalAlignment="Center"/>
+    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+     <Button Content="Light" Tag="light" Click="Background_Click"/>
+     <Button Content="Dark" Tag="dark" Click="Background_Click"/>
+     <Button Content="Centre" Click="Reset_Click"/>
+    </StackPanel>
+   </Grid>
+   <local:NoteView x:Name="Note" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+   <StackPanel Grid.Row="2" Margin="28,20,28,24" Spacing="8">
+    <TextBlock x:Name="StatusText" Text="Pick up the top edge. Click the paper to write." Foreground="#81735F" TextWrapping="Wrap"/>
+    <TextBlock x:Name="ResourceText" Text="Native Windows Composition · shared live text surface" FontSize="11" Foreground="#81735F"/>
+   </StackPanel>
+  </Grid>
+ </Grid>
+</Page>

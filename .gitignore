@@ -2,7 +2,9 @@
 **/obj/
 **/__pycache__/
 proto/artifacts/
-tools/nootfx-assets/node_modules/
+/artifacts/
+/tools/.cache/
+tools/scrunchfx-assets/node_modules/
 *.log
 
 # Local IDE state and diagnostics
@@ -19,6 +21,8 @@ TestResults/
 !.env.example
 *.pfx
 *.p12
+*.dmp
+*.key
 notes.json
 notes.json.bak
 product-check-*/

@@ -1,5 +1,5 @@
 param([Parameter(Mandatory)][int]$AppPid,
-      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/nootfx-variation-moderate-ui'),
+      [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/scrunchfx-variation-moderate-ui'),
       [switch]$Resume)
 $ErrorActionPreference='Stop'
 $cli=Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windows.sdk.buildtools.winapp/0.6.1/tools/win-x64/winapp.exe'
@@ -36,7 +36,7 @@ try {
             Ui invoke FxHold -w $main | Out-Null
             Ui invoke FxReplay -w $main | Out-Null
             Start-Sleep -Milliseconds 300
-            $overlay=(Windows | Where-Object title -eq 'NootFX paper').hwnd
+            $overlay=(Windows | Where-Object title -eq 'ScrunchFX paper').hwnd
             if(!$overlay){throw 'Held overlay absent'}
             foreach($pose in @(.4,.7,1)) {
                 Ui set-value FxProgress $pose -w $main | Out-Null
@@ -54,7 +54,7 @@ try {
                 Start-Sleep -Milliseconds 850
                 Ui invoke FxDelete -w $main | Out-Null
                 if(!$recording.WaitForExit(($duration+10)*1000) -or $recording.ExitCode -ne 0){throw 'Recording failed'}
-                if((Note) -or (Windows | Where-Object title -eq 'NootFX paper')){throw 'Discard did not close and become dormant'}
+                if((Note) -or (Windows | Where-Object title -eq 'ScrunchFX paper')){throw 'Discard did not close and become dormant'}
                 Ui invoke 'Undo last discard' -w $main | Out-Null
                 Start-Sleep -Milliseconds 300
                 if((Ui get-value NoteText -w (Note) --json | ConvertFrom-Json).text -ne $text){throw 'Undo changed text'}

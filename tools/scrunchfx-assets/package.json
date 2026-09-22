@@ -1,0 +1,6 @@
+{
+  "name": "scrunchfx-asset-preparation",
+  "private": true,
+  "type": "module",
+  "scripts": { "prepare": "node author.mjs", "check": "node author.mjs --check" }
+}
