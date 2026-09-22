@@ -90,12 +90,15 @@ With no existing personal installation and all Scrunch processes quit:
 
 ```powershell
 ./tools/verify-installation.ps1
+./tools/verify-portable.ps1
 ```
 
-This installs, exercises and uninstalls the final local installer, saving evidence
+The first command installs, exercises and uninstalls the final local installer, saving evidence
 under `artifacts/installed-verification`. It temporarily changes only Scrunch's
 startup values and restores their original state in `finally`. It refuses to
 overwrite an existing installation unless explicitly identified as a prior test.
+The second extracts and runs the exact ZIP with synthetic data. Both need an
+interactive desktop and save evidence under the ignored artifacts directory.
 
 For interactive tray acceptance, install the final artifact and run in an unlocked,
 foregroundable Windows desktop session:
