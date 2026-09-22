@@ -1,192 +1,147 @@
 # Scrunch 0.1.0 release verification
 
 Tested on 22 September 2026, Windows 10 x64 build 19045, NVIDIA RTX 3060 Ti.
-This report separates the final distributed artifacts from Debug regression and
-media fixtures. The repository remains private; no release has been published.
+The repository remains private; no release has been published.
 
 ## Acceptance status
 
-**Release engineering and local x64 acceptance are complete, with a font-settings
-refresh.** The exact local installer and ZIP identified below pass installation,
-persistence, startup and cleanup checks. Native Debug checks verify the font
-controls, capture refresh and animated discard. No known release blocker remains for these
-artifacts on the tested Windows 10 system. Hardware coverage limits are listed
-below; public publication remains a deliberate owner action.
-
-The physical tray, installed crumple recording and performance evidence below
-comes from the earlier pre-font-settings build. The refreshed artifacts rerun
-installation and portable acceptance; the 52-check native Debug product suite
-verifies font changes, regenerated motion captures and animated discard.
-Earlier attempts were blocked by Windows refusing foreground focus. Once that
-desktop condition cleared, the pre-font-settings installer passed all 21 physical tray checks.
-A physical right-click and physical Discard note menu selection triggered the
-real animation; bounded recorded frames show deformation, crumpled paper and the
-empty backdrop. The saved note was marked discarded, and Undo restored the same
-note and original editor text. The tested installed assembly hash matches the
-then-packaged payload. Temporary installations and the media backdrop were
-removed afterwards.
+The smaller self-contained installer and ZIP pass local x64 acceptance. The
+installer lifecycle, portable restart/font persistence, native product suite and
+actual Release animated discard were checked after the package changes.
+No known release blocker remains on the tested system. Platform limits below
+still apply; public publication remains a deliberate owner action.
 
 ## Final local artifacts
 
 Built with `tools/release.ps1`, pinned .NET SDK 9.0.317, locked NuGet dependencies,
-Release x64, self-contained .NET and Windows App SDK, ReadyToRun on, trimming off.
+Release x64, self-contained .NET and Windows App SDK WinUI/DWrite components.
+ReadyToRun, trimming and single-file bundling are disabled. See
+[package size](PACKAGE-SIZE.md) for the comparison and rejected trimming trial.
 
 | Artifact | Bytes | MiB |
 | --- | ---: | ---: |
-| `Scrunch-0.1.0-Setup.exe` | 73,141,554 | 69.75 |
-| `Scrunch-0.1.0-win-x64.zip` | 108,522,863 | 103.50 |
-| Published payload, 535 files | 281,295,253 | 268.26 |
+| `Scrunch-0.1.0-Setup.exe` | 49,493,811 | 47.20 |
+| `Scrunch-0.1.0-win-x64.zip` | 73,254,496 | 69.86 |
+| Published payload, 479 files | 180,762,305 | 172.39 |
 
 SHA-256:
 
 ```text
-2591b8347f56a3abb6f5f6bea500b7484dee5cf02e2f43cf6aa19fae89741b58  Scrunch-0.1.0-Setup.exe
-492756fccc93a940c3f08edb97467bb08884f48d9c590402954db09259d31247  Scrunch-0.1.0-win-x64.zip
+c8846da7747dbe7b0255c344a1332e0bd27e731de35bc5efcb52c1a2509023c9  Scrunch-0.1.0-Setup.exe
+702523a5d47426709a55db090587d0aaa22bee9fd7d3ce11e964a9f7fdeb1456  Scrunch-0.1.0-win-x64.zip
 ```
 
-Executable properties: ProductName `Scrunch`, FileVersion `0.1.0.0`,
-ProductVersion `0.1.0`, no invented company. `Directory.Build.props` supplies
-the version. Only x64 artifacts were produced. The payload includes the SDK's
-transitive redistributables; it has not been aggressively pruned for size.
+Managed application assembly SHA-256:
+`16741e9b95eee21272e75117f031384fbf0bdb48bc7be3265892354285b15093`.
+Executable metadata: ProductName `Scrunch`, FileVersion `0.1.0.0`, ProductVersion
+`0.1.0`, no invented company. Only x64 artifacts were produced.
 
 ## Exact installed and portable checks
 
-`tools/verify-installation.ps1` installs the final EXE at
-`%LOCALAPPDATA%\Programs\Scrunch`, hashes installed executable/assembly against
-the packaged payload, and uses a process-only isolated notebook directory.
-Its successful 26-check run verifies:
+`tools/verify-installation.ps1` passed all 26 checks against the smaller installer:
 
-- Start Menu launch, visible shell, native note creation, editing and autosave.
-- Closing the shell keeps the resident app and note alive; OS-delivered
-  Ctrl+Alt+N creates another note with the shell hidden.
-- Startup defaults off; enabling writes one quoted installed path plus
-  `--startup`; disabling removes it.
-- In-place reinstall preserves notebook bytes and startup opt-in. Quiet startup
-  restores notes without the shell; manual launch redirects to that resident app.
-- A Windows-disabled startup entry stays visibly disabled. Re-registration does
-  not overwrite Windows approval; the blocked entry can be removed in Settings.
-- Quit exits cleanly. Uninstall removes binaries, shortcut and an enabled Run
-  value, while preserving notebook bytes. Personal notebook hashes are unchanged.
+- Per-user installation and Start Menu launch; installed executable and assembly
+  hashes match the packaged payload.
+- Native note creation, editing, autosave, hidden-shell residency and OS-delivered
+  Ctrl+Alt+N.
+- Startup defaults off; enabling writes one quoted installed path plus `--startup`.
+- Reinstall preserves notebook bytes and startup opt-in. Quiet startup restores
+  notes without the shell; manual activation redirects to the resident process.
+- Windows-disabled startup remains disabled and its approval state is preserved;
+  the blocked registration can be removed through Settings.
+- Quit exits; uninstall removes binaries, shortcut and enabled startup entry while
+  preserving saved notes. Personal notebooks remain untouched.
 
-`tools/verify-tray-callbacks.ps1` passes 12 checks against the pre-font-settings installation:
-Explorer exposes the icon; its real registration and stable GUID are present;
-New note, Undo, Show notes, Settings and Quit work through the real native menu;
-Quit removes the icon; quiet startup restores notes and the same icon identity;
-manual activation redirects; footer Quit exits. These use the version-4 callback
-and posted native menu mnemonics, **not physical mouse input**.
+`tools/verify-portable.ps1` extracted the exact ZIP and passed payload verification,
+launch, editing, saving, font selection and full process restart. Inter at size 28
+and the synthetic note text were restored. Startup registration stays unavailable
+and off outside the stable installed path. Quit exits cleanly.
 
-`proto/verify-tray-ui.ps1` separately passes **21 physical desktop checks** on the
-pre-font-settings installer: physical tray left-click, click-away dismissal, right-click
-menu, OS keyboard menu actions, note creation and Undo, Settings, hidden-shell
-global shortcut, tray Quit, icon removal, quiet startup, manual reactivation and
-footer Quit. Its fresh notebook is seeded through the real editor and restored
-after a clean restart. Evidence: `artifacts/manual-tray-final-evidence/checks.json`.
+Temporary test installations were uninstalled and original startup registry state
+restored. Evidence is under ignored `artifacts/installed-verification`; prior
+font-build reports are preserved in `artifacts/size-baseline/verification`.
 
-Pre-font-settings installed crumple acceptance used physical mouse input to open the note's
-context menu and select Discard note. A four-second 460×480 recording contains
-120 samples at approximately 30 fps; inspected frames show the actual paper
-deforming, gathering and disappearing. The persisted discard and subsequent Undo
-were checked against the original note ID and editor text. Evidence under
-`artifacts/installed-verification`: `crumple-final-result.json`,
-`crumple-final.mp4`, and the corresponding frame manifest/images. This evidence
-comes from the pre-font-settings installed executable, independently of the public Debug
-fixture demonstration clip.
+## Native rendering and regression results
 
-`tools/verify-portable.ps1` extracted the exact ZIP separately, checked its payload
-and launched it. Its shell
-and editor work, synthetic text and Inter at size 28 persist across a full process restart, Quit exits, and startup is unavailable
-and off because it is not installed at the registered stable path.
+The exact Release publish payload was launched with an isolated notebook over a
+neutral backdrop. Physical right-click and Discard note menu click triggered the
+real animation. A four-second 460 x 480 recording contains 120 samples; inspected
+frames show readable paper, deformation, crumpled paper and an empty backdrop.
+Discard persisted, and Undo restored the same note ID and editor text. Its managed
+assembly matches the packaged and installation-verified assembly. Evidence:
+`artifacts/size-discard/result.json`, `discard.mp4`, and `discard.frames`.
 
-All temporary test installations were uninstalled. Original startup registry
-values were restored. Synthetic notebooks and raw logs remain under ignored
-`artifacts/installed-verification`; no personal note contents were captured.
+| Suite | Result | Evidence scope |
+| --- | --- | --- |
+| Storage and migration | 27 checks passed | Current source |
+| Paper geometry | 466,560 projected + 1,570,752 crumple patches | Current source |
+| ScrunchFX assets/motion | 10,000 seeds passed | Current source |
+| Tray identity/placement | 9 checks, including 10,000 placements | Current source |
+| Prepared asset generator | All three bakes byte-exact | Current source |
+| Native product, Debug | 52 checks passed | Current component build |
+| Native ScrunchFX, Debug | 62 checks passed | Current component build |
+| Native paper renderer, Debug | 25 checks passed | Prior build |
+| Native tray integration, Debug | 22 checks passed | Prior build |
+| Native tray callback smoke | 12 checks passed | Exact Release payload |
+| Physical desktop tray suite | 21 checks passed | Prior build |
 
-## Regression results
+The current native product suite covers shell/search/list/settings, Unicode
+editing, placement, autosave, discard/Undo races, font preview and persistence,
+fresh glyph capture, animated menu discard and clean shutdown. Debug evidence:
+`proto/artifacts/size-check/product-verification.json`. Build: zero warnings/errors.
+The 12 callback checks use the real Explorer registration and native menu commands,
+not physical mouse input; evidence is in `artifacts/size-tray/checks.json`.
+Prior physical tray evidence remains `artifacts/manual-tray-final-evidence/checks.json`;
+it is not represented as a fresh run of this smaller build.
 
-| Suite | Result |
-| --- | --- |
-| Storage and migration | 27 checks passed |
-| Paper geometry | 466,560 projected and 1,570,752 crumple patches checked |
-| ScrunchFX assets/motion | 10,000 seed checks passed |
-| Tray identity/placement | 9 checks, including 10,000 placements, passed |
-| Prepared asset generator | All three bakes reproduce byte-for-byte |
-| Native product integration, Debug | 52 checks passed |
-| Native paper renderer, Debug | 25 checks passed |
-| Native ScrunchFX, Debug | 62 checks passed |
-| Native tray integration, Debug | 22 checks passed |
+## Performance and platform limits
 
-The refreshed native product suite covers font selection and preview, existing/new/restored notes, invalid size entry, unchanged note text and dimensions, refreshed capture and animated discard. Other native suites below retain their pre-font-settings evidence. Native Debug checks used isolated fixtures in the renamed source tree. The FX
-launcher initially reached its wait timeout; the app continued and wrote a fresh
-successful 62-check report. These checks cover capture, crumple playback,
-cancellation/Undo, reduced motion and renderer rest. They are distinct from final
-Release installer acceptance.
+Five alternating runs measured median launch to shell control availability of
+391 ms before and 438 ms after; first-note availability measured 266 ms and 308 ms.
+The first observed launch was 504 ms before and 1,389 ms after. These include UI
+automation overhead and are not controlled cold-cache measurements. Full context
+and raw evidence references are in [package size](PACKAGE-SIZE.md).
 
-The physical tray suite is preserved in `proto/verify-tray-ui.ps1`; it was not
-weakened to call the programmatic callback suite a mouse test. Windows 11,
-ARM64, mixed DPI and alternate taskbar edges remain unverified. A real sign-out
-and sign-in cycle was not performed; registry state and the actual `--startup`
-invocation path were exercised.
+Earlier three-note Release sampling measured 140.98 MiB private memory, 174.20 MiB
+working set and 15.625 ms CPU over 10.015 seconds. Those measurements predate this
+package change and do not establish the current build's steady-state budget.
 
-## Size and performance observations
-
-Pre-font-settings installed Release, visible shell and three idle synthetic notes (not remeasured for the font-settings refresh):
-
-- Private memory: 147,824,640 bytes (140.98 MiB).
-- Working set: 182,661,120 bytes (174.20 MiB).
-- CPU: 15.625 ms across 10.015 seconds, about 0.16% of one logical core.
-- Warm process launch to an observed shell: 394 ms.
-- First New note invocation to an observed note: 206 ms.
-
-The launch/note timings include UI automation polling and command overhead.
-This is one short sample on one machine, not a cold-start or cross-hardware
-benchmark. Raw observations are in `final-performance.json` in the ignored
-evidence directory, including the measured managed-assembly hash.
+Windows 11, ARM64, mixed DPI and alternate taskbar edges remain unverified. A real
+sign-out/sign-in cycle was not performed; registry state and actual `--startup`
+invocation were exercised. Binaries remain unsigned.
 
 ## Cleanliness, licences and public media
 
-MIT covers Scrunch's code and owned generated assets. Full Inter/Drawably terms,
-Vortice/SharpGen notices, .NET notices, and Microsoft redistribution terms are
-included. Build-time notice generation fails on an unreviewed dependency.
-Unused source fonts retain their OFL notices but do not ship in the app.
+MIT covers Scrunch code and owned generated assets. Font, Vortice/SharpGen, .NET
+and Microsoft redistribution notices are retained. Dependency notice generation
+uses the narrower restored graph and fails on unreviewed dependencies.
 
-Payload verification checks fonts, XAML, icon, prepared bakes, shader, runtime
-and notices. It rejects local logs, QA data, source tooling, debug symbols,
-private keys, unused fonts and development pages. Owned Release assembly strings
-contain neither developer home paths nor verification entrypoints. Git ignores
-builds, caches, notes, signing material and raw verification evidence.
+Payload validation requires fonts, XAML, icons, prepared bakes, shader, runtime and
+notices. It rejects unused AI/ML/widgets components, payloads above 200 MiB, local
+logs, notes, test media, development pages, source tooling, debug symbols and keys.
+Owned Release strings contain neither developer home paths nor test entrypoints.
 
-Source and tools now use Scrunch/ScrunchFX. The only old product-name references
-are the legacy data-directory literal, the preservation test and its explanatory
-documentation. They are required to find existing users' notes. The active local
-checkout directory and historical Git revisions were not renamed or rewritten.
+Source uses Scrunch/ScrunchFX. Old-name references only support preserved legacy
+notebook migration and its tests/documentation. The active checkout directory and
+Git history were not rewritten.
 
-Public media in `docs/media` contains only synthetic notes: an installed-app
-desktop screenshot, a native dark-shell fixture, and a 115,111-byte six-second
-460×480 MP4. The clip uses the existing Debug FX fixture to invoke the production
-discard renderer at normal speed; it is demo media, not final-installer evidence.
-Frames were inspected for the note, deformation, crumpled paper and empty backdrop.
+Public media in `docs/media` contains synthetic notes only. The public discard
+clip uses the Debug fixture at normal speed and remains demonstration media;
+the newer Release recording above is separate acceptance evidence.
 
-## Automation and remaining release steps
+## Automation and publication
 
-The GitHub workflow builds on Windows, runs headless checks, packages and uploads
-the installer/ZIP/checksums. Version tags create a draft release in a separate job
-with narrowly scoped write permission. The [clean Windows runner build passed](https://github.com/nickzonzh/scrunch/actions/runs/35671612204)
-for commit `4e30173983be9e94d3270825cc2e70a2d4d7a079`, including all headless checks,
-Release publish, payload validation, installer/ZIP creation and artifact upload.
-The first run exposed a missing ReadyToRun compiler restore on clean machines;
-explicit Release restore fixed it. The local packages above were rebuilt from
-the font-settings source with the 26 installation and portable checks rerun. The linked hosted build predates the font controls; the current font build was verified locally.
-The tag-only draft-release job was correctly skipped on manual dispatch and has
-not been exercised with a tag. Hosted Actions emitted a runtime deprecation notice
-for the pinned v4 actions; GitHub ran them successfully with its Node 24 override.
+The Windows workflow restores locked dependencies, runs headless checks, publishes,
+validates the payload and uploads installer/ZIP/checksums. Version tags create a
+draft release in a separate job with narrowly scoped write permission. The prior
+[clean Windows runner build](https://github.com/nickzonzh/scrunch/actions/runs/35671612204)
+passed before these package changes. Current clean-runner verification is pending.
+The tag-only draft-release job has not been exercised with a tag.
 
 Before publication:
 
-1. Review the known platform coverage limits and verify the hashes above.
-2. If distributing GitHub's rebuilt artifacts,
-   install and smoke-test those exact downloads; local hashes do not identify them.
-3. Follow [the publishing commands](RELEASING.md#publishing), then deliberately
-   make the repository public and publish the draft when ready.
-
-No tag, public release, signing certificate or auto-update
-was introduced by this milestone.
+1. Review platform coverage limits and verify the hashes above.
+2. If distributing GitHub's rebuilt artifacts, smoke-test those exact downloads;
+   local artifact hashes do not identify hosted builds.
+3. Follow [publishing](RELEASING.md#publishing), then deliberately make the
+   repository public and publish the draft when ready.
