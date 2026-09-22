@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      windows-app-sdk:
+        patterns: ["Microsoft.WindowsAppSDK*", "Microsoft.Windows.SDK*"]
+      vortice:
+        patterns: ["Vortice.*"]
+      tests:
+        patterns: ["xunit*", "Microsoft.NET.Test.Sdk"]

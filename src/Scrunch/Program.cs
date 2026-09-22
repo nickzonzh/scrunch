@@ -19,7 +19,7 @@ internal static class Program
         // Verification/bench processes use isolated data and must not activate everyday notes.
         bool isolated = false;
 #if DEBUG
-        isolated = arguments.Any(a => a is "--verify" or "--bench" or "--verify-product");
+        isolated = arguments.Any(a => a is "--verify-product");
         isolated |= arguments.Any(a => a is "--shell-preview" or "--verify-fx" or "--fx-lab");
 #endif
         using var installerMutex = new Mutex(false, @"Local\Scrunch.Installer.Resident");

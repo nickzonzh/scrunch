@@ -68,7 +68,7 @@ public sealed partial class NoteWindow : Window
     private readonly IntPtr _hwnd;
     private readonly NativeTransparency _transparency;
     private PointInt32 _dragWinPos;
-    public NoteRecord? Record { get; private set; }
+    public NoteRecord Record { get; }
     internal bool EditorLoaded => Note.IsLoaded;
     private bool _recordReady;
     public event EventHandler? RecordChanged;
@@ -101,7 +101,7 @@ public sealed partial class NoteWindow : Window
     private MenuFlyoutItem? _discardItem;
     private bool _discardAfterMenu;
 
-    public NoteWindow(int feel = 1, string colour = "yellow", string text = "", bool reducedMotion = false, NoteRecord? record = null)
+    public NoteWindow(NoteRecord record)
     {
         InitializeComponent();
         Record = record;
@@ -109,15 +109,12 @@ public sealed partial class NoteWindow : Window
 
         _hwnd = WindowNative.GetWindowHandle(this);
         _appWin = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd));
-        Note.SetFeel(record?.Feel ?? feel);
-        Note.SetColour(record?.Colour ?? colour);
-        Note.Text = record?.Text ?? text;
-        Note.SetReducedMotion(record?.ReducedMotion ?? reducedMotion);
-        if (record != null)
-        {
-            Note.AnimateOnLoad = false;
-            Note.SetPaperSize(record.Width, record.Height);
-        }
+        Note.SetFeel(record.Feel);
+        Note.SetColour(record.Colour);
+        Note.Text = record.Text;
+        Note.SetReducedMotion(record.ReducedMotion);
+        Note.AnimateOnLoad = false;
+        Note.SetPaperSize(record.Width, record.Height);
 
         // Borderless, no frame resize, pinned above other windows.
         _appWin.SetPresenter(AppWindowPresenterKind.Overlapped);
@@ -228,25 +225,22 @@ public sealed partial class NoteWindow : Window
         menu.Items.Add(close);
         Note.ContextFlyout = menu;
 
-        if (record != null)
-        {
-            Note.Changed += (_, _) => NotifyChanged();
-            Note.ContentSizeChanged += (_, _) => NotifyChanged();
-            Note.WindowDragEnded += (_, _) => NotifyChanged();
-            _appWin.Changed += AppWindowChanged;
-            AddShortcut(Windows.System.VirtualKey.N, Windows.System.VirtualKeyModifiers.Control, () => NewRequested?.Invoke(this, EventArgs.Empty));
-            AddShortcut(Windows.System.VirtualKey.Z, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => UndoRequested?.Invoke(this, EventArgs.Empty));
-            AddShortcut(Windows.System.VirtualKey.Delete, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => Discard());
-            // The focused TextBox consumes Delete combinations before parent
-            // accelerators. Honor the advertised discard shortcut in preview.
-            Note.PreviewKeyDown += DiscardPreviewKeyDown;
-            _detachNativeEvents.Add(() => Note.PreviewKeyDown -= DiscardPreviewKeyDown);
-        }
+        Note.Changed += (_, _) => NotifyChanged();
+        Note.ContentSizeChanged += (_, _) => NotifyChanged();
+        Note.WindowDragEnded += (_, _) => NotifyChanged();
+        _appWin.Changed += AppWindowChanged;
+        AddShortcut(Windows.System.VirtualKey.N, Windows.System.VirtualKeyModifiers.Control, () => NewRequested?.Invoke(this, EventArgs.Empty));
+        AddShortcut(Windows.System.VirtualKey.Z, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => UndoRequested?.Invoke(this, EventArgs.Empty));
+        AddShortcut(Windows.System.VirtualKey.Delete, Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift, () => Discard());
+        // The focused TextBox consumes Delete combinations before parent
+        // accelerators. Honor the advertised discard shortcut in preview.
+        Note.PreviewKeyDown += DiscardPreviewKeyDown;
+        _detachNativeEvents.Add(() => Note.PreviewKeyDown -= DiscardPreviewKeyDown);
 
         // Backup: AppWindow sizing pre-Activate is unreliable on some machines.
         Activated += FirstActivated;
         FitWindowToContent();
-        if (Record != null) RestorePosition();
+        RestorePosition();
         _recordReady = true;
     }
 
@@ -292,21 +286,7 @@ public sealed partial class NoteWindow : Window
         else Note.Loaded += FocusWhenLoaded;
     }
     private void FocusWhenLoaded(object sender, RoutedEventArgs e) { Note.Loaded -= FocusWhenLoaded; Note.FocusEditor(); }
-    public void Discard(bool animate = false)
-    {
-        if (Record == null)
-        {
-            if (animate) DiscardTestNote();
-            else Close();
-        }
-        else DiscardRequested?.Invoke(this, animate);
-    }
-    private async void DiscardTestNote()
-    {
-        if (IsDiscarding || _closed) return;
-        await PlayDiscardAsync();
-        if (!_closed) Close();
-    }
+    public void Discard(bool animate = false) => DiscardRequested?.Invoke(this, animate);
     public async Task PlayDiscardAsync()
     {
         int version = ++DiscardVersion;
@@ -318,7 +298,7 @@ public sealed partial class NoteWindow : Window
         {
             var result = Note.AllowNativeFx
                 ? await ScrunchFX.ScrunchFxService.Shared.PlayAsync(() => Note.CaptureForFxAsync(_hwnd),
-                    visible => { if (!_closed && (!visible || Record?.DeletedAt == null)) Note.ShowFxSource(visible); }, cancellation.Token)
+                    visible => { if (!_closed && (!visible || Record.DeletedAt == null)) Note.ShowFxSource(visible); }, cancellation.Token)
                 : new ScrunchFX.FxResult("Reduced motion or editor unavailable", 0);
             if (version == DiscardVersion) { LastDiscardFrames = result.Frames; LastDiscardOutcome = result.Outcome; }
         }
@@ -364,13 +344,12 @@ public sealed partial class NoteWindow : Window
 
     private void NotifyChanged()
     {
-        if (Record == null || !_recordReady) return;
+        if (!_recordReady) return;
         RecordChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void RestorePosition()
     {
-        if (Record == null) return;
         var requested = new PointInt32(Record.X, Record.Y);
         var area = DisplayArea.GetFromPoint(requested, DisplayAreaFallback.Nearest).WorkArea;
         // Keep the paper reachable after a monitor is unplugged. Window bounds include 80 DIP padding.

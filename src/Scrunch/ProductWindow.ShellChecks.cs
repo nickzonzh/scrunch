@@ -46,7 +46,7 @@ public sealed partial class ProductWindow
         await Task.Delay(100);
         UndoDiscard();
         await Task.Delay(350);
-        var restoredEditor = (TextBox)((NoteView)_windows[created.Record!.Id].Content).FindName("NoteText");
+        var restoredEditor = (TextBox)((NoteView)_windows[created.Record.Id].Content).FindName("NoteText");
         check(restoredEditor.FontFamily.Source == editor.FontFamily.Source && restoredEditor.FontSize == 28,
             "Undo restores notes using the current global typography");
         _windows[created.Record.Id].Discard();
@@ -95,7 +95,7 @@ public sealed partial class ProductWindow
         Invoke("NewButton");
         await Task.Delay(500);
         var window = _windows.Values.Single();
-        var record = window.Record!;
+        var record = window.Record;
         check(record.Colour == "lavender" && record.Pinned && record.ReducedMotion, "New note button applies saved colour, pinning and reduced motion");
         window.SetTestContent("Call the dentist\nBook the annual check-up", "lavender", 300, 320);
         await Task.Delay(500);
@@ -311,7 +311,7 @@ public sealed partial class ProductWindow
             window.SetTestContent("Remember the good stuff.\n\nA walk outside.", "mint", 360, 280);
             window.AppWindow.Move(new PointInt32(240, 160));
             await Task.Delay(600);
-            var record = window.Record!;
+            var record = window.Record;
             Check(record.Text.Contains("A walk") && record.Colour == "mint" && record.Width == 360 && record.Height == 280, "Native changes update the persistent record");
             Check(record.X == 240 && record.Y == 160, "Physical window placement captured");
             Check(!_session.Dirty, "Autosave drains after edits");

@@ -25,9 +25,10 @@ The ZIP contains the same self-contained application. Extract it completely and
 run `Scrunch.exe`. Portable means no installation; notes still use your Windows
 profile, and start at sign-in is available only in an installed copy.
 
-The initial binaries are unsigned. Windows may show an unknown-publisher or
-SmartScreen warning. Check the release source and `SHA256SUMS.txt`; signing is not
-configured. Do not disable Windows security features to install Scrunch.
+Releases are unsigned until Azure Trusted Signing is provisioned (see
+[Signing](docs/RELEASING.md#signing)); Windows may show an unknown-publisher or
+SmartScreen warning meanwhile. Check the release source and `SHA256SUMS.txt`. Do not
+disable Windows security features to install Scrunch.
 
 ## Usage
 

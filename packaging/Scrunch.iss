@@ -37,6 +37,11 @@ RestartApplications=no
 Uninstallable=yes
 DisableProgramGroupPage=yes
 SetupLogging=yes
+#ifdef Sign
+; release.ps1 defines Sign and the "scrunch" sign tool (tools/sign.ps1) together.
+SignTool=scrunch
+SignedUninstaller=yes
+#endif
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

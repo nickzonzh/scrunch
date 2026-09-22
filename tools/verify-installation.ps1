@@ -27,6 +27,13 @@ $originalRunKind = if ($null -ne $originalRun) { $run.GetValueKind('Scrunch') } 
 if ($run) { $run.Dispose() }
 $approval = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($approvalPath)
 $originalApproval = if ($approval) { $approval.GetValue('Scrunch'); $approval.Dispose() } else { $null }
+# A failed run leaves the test installation behind; this record is what lets the
+# next run identify it as ours instead of a personal install.
+if (!$UseExistingTestInstall) {
+    Write-Evidence (Join-Path $evidence 'original-state.json') @{
+        installExisted=$false; run=$originalRun; approval=$originalApproval; startedAt=[DateTime]::UtcNow.ToString('o')
+    }
+}
 $personalHashes = @{}
 foreach ($folder in @('Noot','Scrunch')) {
     $path = Join-Path $env:LOCALAPPDATA "$folder/notes.json"

@@ -49,15 +49,11 @@ public sealed partial class NoteView : UserControl
     public double PaperWidth => Paper.Width;
     public double PaperHeight => Paper.Height;
     public event EventHandler? Changed;
-    public bool IsAnimating => _renderer?.IsAnimating ?? false;
-    public int DiscardFrames => _renderer?.DiscardFrames ?? 0;
-    public bool MeshVisible => _renderer?.Visible ?? false;
     public string TextureDigest => _renderer?.TextureDigest ?? "";
     public event EventHandler? WindowDragStarted;
     public event EventHandler<Point>? WindowDragDelta;
     public event EventHandler? WindowDragEnded;
     public event EventHandler? ContentSizeChanged;
-    public event EventHandler<string>? StatusChanged;
     private PaperRenderer? _renderer;
     private Visual? _visual;
     private bool _dragging, _resizing, _wired;
@@ -74,7 +70,6 @@ public sealed partial class NoteView : UserControl
     private int _request;
     private bool _discarding;
     private bool _inspection;
-    public bool HasPaddedMotionViewport => MeshHost.ActualWidth >= Paper.Width + 159 && MeshHost.ActualHeight >= Paper.Height + 159;
     private int _discardGeneration;
     public string LastDiscardOutcome { get; private set; } = "Not started";
     public NoteView() => InitializeComponent();
@@ -110,10 +105,9 @@ public sealed partial class NoteView : UserControl
             await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
             if (!_closed) RestShadowBrush.ImageSource = bitmap;
         }
-        catch (Exception error) { Report($"Shadow texture unavailable: {error.Message}"); }
+        catch { /* The paper still works without its rest shadow. */ }
         if (_closed) return;
         if (AnimateOnLoad && NoteText.FocusState == FocusState.Unfocused) await PrepareMotion(r => r.Peel());
-        Report("Ready. Drag the top edge or click to write.");
     }
     private void AnimationsChanged(UISettings sender, object args) => DispatcherQueue.TryEnqueue(() => SetReducedMotion(ReducedMotion));
     private void NoteView_Unloaded(object sender, RoutedEventArgs e) => ReleaseGraphics();
@@ -126,7 +120,7 @@ public sealed partial class NoteView : UserControl
         Loaded -= NoteView_Loaded; Unloaded -= NoteView_Unloaded;
         CancelDiscard(); ReleaseGraphics();
         Changed = null; WindowDragStarted = null; WindowDragDelta = null;
-        WindowDragEnded = null; ContentSizeChanged = null; StatusChanged = null;
+        WindowDragEnded = null; ContentSizeChanged = null;
         ContextFlyout = null; RestShadowBrush.ImageSource = null;
         _visual = null;
     }
@@ -165,7 +159,6 @@ public sealed partial class NoteView : UserControl
     {
         FeelIndex = Math.Clamp(index, 0, 2);
         if (_renderer != null) { _renderer.Feel = PaperFeel.All[FeelIndex]; _renderer.Refresh(); }
-        Report(PaperFeel.All[FeelIndex].Name);
         Changed?.Invoke(this, EventArgs.Empty);
     }
     public void SetReducedMotion(bool value)
@@ -192,7 +185,7 @@ public sealed partial class NoteView : UserControl
         _contentVersion++;
         Edit(); // The next paper motion must capture the newly laid-out text.
     }
-    public Task PeelAsync() { Report("Peel: the writing travels with the paper."); return PrepareMotion(r => r.Peel()); }
+    public Task PeelAsync() => PrepareMotion(r => r.Peel());
     public async Task DiscardAsync()
     {
         if (_renderer == null) { LastDiscardOutcome = "Editor not loaded"; return; }
@@ -225,24 +218,12 @@ public sealed partial class NoteView : UserControl
             if (_capture == null) _capture = CaptureTextureAsync(_renderer, _contentVersion);
             await _capture;
         }
-        catch (Exception error) { Report($"Paper preparation failed: {error.Message}"); }
+        catch { /* Motion is optional; the native editor stays usable. */ }
     }
-    public Task PreviewCrumpleAsync(float amount) => PrepareMotion(r => r.PreviewCrumple(amount));
     internal Task InspectMaterialAsync(float amount, bool lift)
     {
         _inspection = true;
         return PrepareMotion(r => { if (lift) r.Hold(1800, 1); else r.PreviewCrumple(amount); });
-    }
-    public async void PreviewBend(float amount) => await SetPreviewAsync(amount);
-    public async Task SetPreviewAsync(float amount) { await PrepareMotion(r => r.Preview(amount)); Report($"Bend inspection: {amount:P0}"); }
-    public async void Lift() { await PrepareMotion(r => r.Hold(0, _grab)); Report("Picked up. Release to settle."); }
-    public void Release() { _renderer?.Rest(); Report("Placed. Motion stops when the paper settles."); }
-    public Task ResetAsync()
-    {
-        _dragging = _resizing = false;
-        GrabZone.ReleasePointerCaptures(); Grip.ReleasePointerCaptures();
-        if (_visual != null) _visual.Offset = Vector3.Zero;
-        SetPaperSize(300, 320); Edit(); return Task.CompletedTask;
     }
     private void Edit()
     {
@@ -271,7 +252,7 @@ public sealed partial class NoteView : UserControl
             renderer.Visible = true;
             action(renderer);
         }
-        catch (Exception error) { Edit(); Report($"Paper capture failed: {error.Message}"); }
+        catch { Edit(); /* Same: fall back to native editing rather than fault. */ }
     }
     private async Task<bool> CaptureTextureAsync(PaperRenderer renderer, int version)
     {
@@ -323,7 +304,7 @@ public sealed partial class NoteView : UserControl
     private void GrabReleased(object sender, PointerRoutedEventArgs e)
     {
         if (!_dragging) return;
-        _dragging = false; GrabZone.ReleasePointerCapture(e.Pointer); Release();
+        _dragging = false; GrabZone.ReleasePointerCapture(e.Pointer); _renderer?.Rest();
         WindowDragEnded?.Invoke(this, EventArgs.Empty); e.Handled = true;
     }
     private void ResizePressed(object sender, PointerRoutedEventArgs e)
@@ -345,7 +326,7 @@ public sealed partial class NoteView : UserControl
     {
         if (!_resizing) return;
         _resizing = false; Grip.ReleasePointerCapture(e.Pointer);
-        BuildFibres(); Report("Resized."); e.Handled = true;
+        BuildFibres(); e.Handled = true;
     }
     public void FocusEditor() { Edit(); NoteText.Focus(FocusState.Programmatic); }
     public void SetPaperSize(double width, double height, bool fibres = true)
@@ -359,7 +340,6 @@ public sealed partial class NoteView : UserControl
         if (fibres) BuildFibres();
         ContentSizeChanged?.Invoke(this, EventArgs.Empty);
     }
-    private void Report(string message) => StatusChanged?.Invoke(this, message);
     [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X; public int Y; }
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out NativePoint point);
 }

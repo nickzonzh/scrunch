@@ -24,7 +24,7 @@ public sealed partial class ProductWindow
             await Task.Delay(500);
             note.SetTestContent("Tray verification\nRestore this note after quit.", "mint", 300, 320);
             await Task.Delay(500);
-            var record = note.Record!;
+            var record = note.Record;
             var originalPosition = note.AppWindow.Position;
             SendMessageForTrayCheck(hwnd, 0x10, IntPtr.Zero, IntPtr.Zero);
             Check(!AppWindow.IsVisible && !_quitting && note.AppWindow.IsVisible && record.DeletedAt == null,
@@ -76,7 +76,7 @@ public sealed partial class ProductWindow
             disposable.Discard(); await Task.Delay(100);
             Check(_session.Document.Notes.Any(n => n.DeletedAt != null), "Discard enables native Undo command state");
             RouteTrayCommand(TrayCommand.Undo); await Task.Delay(300);
-            Check(disposable.Record!.DeletedAt == null && _windows.ContainsKey(disposable.Record.Id), "Tray Undo uses existing recoverable discard path");
+            Check(disposable.Record.DeletedAt == null && _windows.ContainsKey(disposable.Record.Id), "Tray Undo uses existing recoverable discard path");
             HideShell();
             PostMessageForTrayCheck(hwnd, RegisterWindowMessageForTrayCheck("TaskbarCreated"), IntPtr.Zero, IntPtr.Zero);
             await Task.Delay(300);

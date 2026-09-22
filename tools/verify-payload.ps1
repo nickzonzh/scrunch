@@ -11,7 +11,7 @@ $required = @('Scrunch.exe','Scrunch.dll','Scrunch.runtimeconfig.json','Microsof
     'LICENSE','THIRD_PARTY_NOTICES.md','DEPENDENCY_NOTICES.txt')
 foreach ($file in $required) { if (!(Test-Path -LiteralPath (Join-Path $Directory $file))) { throw "Missing shipping file: $file" } }
 $files = @(Get-ChildItem -LiteralPath $Directory -File -Recurse)
-$forbidden = $files | Where-Object { $_.Name -match '(?i)(verification|product-check|startup-error|\.pdb$|\.log$|\.dmp$|\.pfx$|\.p12$|\.key$|\.cs$|\.ps1$|\.mjs$|\.mp4$|notes\.json|Caveat|Kalam|MainPage|MainWindow|\.hlsl$)' }
+$forbidden = $files | Where-Object { $_.Name -match '(?i)(verification|product-check|startup-error|\.pdb$|\.log$|\.dmp$|\.pfx$|\.p12$|\.key$|\.cs$|\.ps1$|\.mjs$|\.mp4$|notes\.json|Caveat|Kalam|\.hlsl$)' }
 if ($forbidden) { throw ('Development files in payload: ' + ($forbidden.Name -join ', ')) }
 # Component-only SDK deployment must not silently regain the umbrella runtime,
 # and the publish target must keep dropping the debugger-only runtime binaries.
