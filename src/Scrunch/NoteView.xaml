@@ -17,7 +17,9 @@
       <Grid>
        <Grid.RowDefinitions><RowDefinition Height="30"/><RowDefinition Height="*"/></Grid.RowDefinitions>
        <Border x:Name="GrabZone" Background="#06000000" ToolTipService.ToolTip="Pick up the top edge"/>
-       <TextBox x:Name="NoteText" Grid.Row="1" Padding="20,4,20,18" AcceptsReturn="True" TextWrapping="Wrap" Background="Transparent"
+       <!-- Every paper colour is light. A dark theme here draws a white caret and a
+            pale placeholder, and WinUI has no caret brush to override instead. -->
+       <TextBox x:Name="NoteText" Grid.Row="1" Padding="20,4,20,18" RequestedTheme="Light" AcceptsReturn="True" TextWrapping="Wrap" Background="Transparent"
         BorderThickness="0" FontFamily="{StaticResource NoteFontFamily}" FontSize="23" Foreground="#453D2D" SelectionHighlightColor="#50BDA246"
         PlaceholderText="A little thing to remember…" IsSpellCheckEnabled="False" AutomationProperties.Name="Note text"
         Text="Leave me where&#x0a;I matter.&#x0a;&#x0a;Pick up my top edge.&#x0a;Put me somewhere good.">
@@ -26,6 +28,9 @@
          <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
          <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent"/>
+         <!-- The light theme's hover and focus brushes are near-black, not the ink. -->
+         <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#453D2D"/>
+         <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#453D2D"/>
         </TextBox.Resources>
        </TextBox>
        <Border x:Name="Grip" Grid.Row="1" Width="24" Height="24" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom" ToolTipService.ToolTip="Resize paper">
