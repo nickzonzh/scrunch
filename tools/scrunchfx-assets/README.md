@@ -7,10 +7,11 @@ requires byte-for-byte equality, including provenance. Node 24.11.0 was used.
 Git attributes preserve LF for the generator/provenance, and source hashing
 normalizes CRLF so Windows checkout conventions do not invalidate the manifest.
 
-Three hand-authored oblique hinge sequences guide an irregular 25x25 panel
-lattice. Offline edge-length projection resists stretched triangles; unequal
-closing pressure forms a compact wad. Centre Collapse also begins with an
-off-centre depression. No collision solver or runtime simulation is included.
+An irregular 25x25 panel lattice is simulated as paper with position-based
+dynamics: inextensible edges, plastic dihedral hinges and paper thickness,
+gathered by a closing hand into a rounded, creased wad. Corner Crush starts from
+a corner, Side Scrunch from one side and Centre Collapse from a pressed centre.
+All of it runs offline: there is no runtime simulation.
 This is an artistic baked approximation, with residual strain and possible
 self-intersection; it is not advertised as a physically exact solve.
 
@@ -19,7 +20,7 @@ Reflection symmetry permits exact geometry-field mirroring without mirrored ink.
 Each file is 476,340 bytes. The NFX2 binary layout stores samples as IEEE
 binary16 (position xyz, normal xyz): 61% smaller than the NFX1 float32 layout
 and within 2.5e-4 of it. `scrunch-provenance.json` records generator and
-output hashes, fold definitions, settings and final bounds.
+output hashes, family definitions, settings and final bounds.
 
 After any authoring change, run the asset checks, then the actual native lab at
 held stages **and production speed**, including mirrored seeds and wide/tall
