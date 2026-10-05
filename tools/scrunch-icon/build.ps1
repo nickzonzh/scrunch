@@ -1,39 +1,20 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $assetDirectory = Join-Path $PSScriptRoot '../../src/Scrunch/Assets'
-[xml]$source = Get-Content (Join-Path $PSScriptRoot 'scrunch.svg') -Raw
+$source = [Drawing.Image]::FromFile((Join-Path $PSScriptRoot 'scrunch-master.png'))
 $sizes = @(16,20,24,32,40,48,64,128,256)
 $frames = @()
-foreach ($size in $sizes) {
-    $large = [Drawing.Bitmap]::new($size*4,$size*4)
-    $g = [Drawing.Graphics]::FromImage($large)
-    $g.SmoothingMode = 'AntiAlias'
-    $g.ScaleTransform($size/8.0,$size/8.0)
-    foreach ($shape in $source.svg.ChildNodes) {
-        if ($shape.LocalName -notin @('polygon','polyline')) { continue }
-        [Drawing.PointF[]]$points = @($shape.points.Split(' ') | ForEach-Object {
-            $pair=$_.Split(','); [Drawing.PointF]::new([float]$pair[0],[float]$pair[1])
-        })
-        if ($shape.LocalName -eq 'polygon') {
-            $brush=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml($shape.fill))
-            try { $g.FillPolygon($brush,$points) } finally { $brush.Dispose() }
-        } else {
-            $pen=[Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml($shape.stroke),[float]$shape.'stroke-width')
-            $pen.LineJoin='Round'
-            try { $g.DrawLines($pen,$points) } finally { $pen.Dispose() }
-        }
-    }
-    $g.Dispose()
+try { foreach ($size in $sizes) {
     $small=[Drawing.Bitmap]::new($size,$size)
     $g=[Drawing.Graphics]::FromImage($small)
     $g.InterpolationMode='HighQualityBicubic'; $g.PixelOffsetMode='HighQuality'
-    $g.DrawImage($large,0,0,$size,$size); $g.Dispose(); $large.Dispose()
+    $g.DrawImage($source,0,0,$size,$size); $g.Dispose()
     $stream=[IO.MemoryStream]::new()
     $small.Save($stream,[Drawing.Imaging.ImageFormat]::Png)
     $frames += ,$stream.ToArray(); $stream.Dispose()
     $small.Save((Join-Path $PSScriptRoot "scrunch-$size.png"),[Drawing.Imaging.ImageFormat]::Png)
     $small.Dispose()
-}
+} } finally { $source.Dispose() }
 $stream=[IO.File]::Create((Join-Path $assetDirectory 'Scrunch.ico'))
 $writer=[IO.BinaryWriter]::new($stream)
 try {

@@ -5,6 +5,18 @@ The repository remains private; no release has been published.
 
 ## Native acceptance, 5 October 2026
 
+### Selected release icon
+
+Nick selected concept C, Tight scrunch, on 5 October 2026. Its transparent paper
+artwork now supplies the executable, window and tray icon at 16 through 256px.
+The generated light/dark size sheet was visually inspected. This changes the
+packaged icon and executable resource; application logic and crumple animation
+data are unchanged. Earlier installer hashes do not identify this refreshed
+package. Visual acceptance in the actual Windows tray/taskbar and smoke checks
+of the refreshed installer and ZIP remain pending before publication.
+
+### Hand-tested application behaviour
+
 Commit `41ff38ceba6ec5c05550f9541b9f7584511bcf88` was **hand-tested by Nick**
 on 5 October 2026. Nick confirmed the current native build is good to go as an
 unsigned early preview. This acceptance covers the 2 October 2026 change,
