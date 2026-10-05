@@ -12,8 +12,20 @@ artwork now supplies the executable, window and tray icon at 16 through 256px.
 The generated light/dark size sheet was visually inspected. This changes the
 packaged icon and executable resource; application logic and crumple animation
 data are unchanged. Earlier installer hashes do not identify this refreshed
-package. Visual acceptance in the actual Windows tray/taskbar and smoke checks
-of the refreshed installer and ZIP remain pending before publication.
+package.
+
+The refreshed build at `6d17c5815a0a664ab72c57f8719d21adacadd704` was installed
+over Nick's existing copy on 5 October 2026. Installation succeeded, all 320
+installed files matched the release payload, and the installed app launched.
+The icon was **hand-tested by Nick** in the installed build and accepted that day:
+"looks great! accepted". The exact portable ZIP still needs its launch/restart
+smoke check before publication. The destructive uninstall lifecycle suite was
+not rerun against Nick's personal installation.
+
+Accepted installed package SHA-256:
+`1b57fa51e3bbf6a0c175c4a53e2b5fecf721274b79f3c35a49edbd4e4fb8a004`.
+Corresponding portable ZIP SHA-256:
+`48e2d3429be9afd74403226c089236e8b3e6b3830187489500d4b4e272a32436`.
 
 ### Hand-tested application behaviour
 
@@ -44,10 +56,10 @@ The full local locked check and the [hosted build and packaging run](https://git
 passed after the fix, including all 86 tests. Nick's hand-tested app code and
 animation data are unchanged by this metadata fix.
 
-Fresh final installer lifecycle and portable smoke checks remain pending. The
-automated lifecycle script must not replace Nick's existing personal installation.
-The October draft must record its own source commit and artifact hashes, and the
-exact final packages must be checked before publication.
+Final installer upgrade and icon acceptance are recorded above. The automated
+uninstall lifecycle script must not replace Nick's existing personal installation.
+The exact portable ZIP launch/restart smoke check remains pending; the draft
+records the current source commit and artifact hashes.
 
 ## Acceptance status, 22 September 2026
 
