@@ -18,9 +18,12 @@ The refreshed build at `6d17c5815a0a664ab72c57f8719d21adacadd704` was installed
 over Nick's existing copy on 5 October 2026. Installation succeeded, all 320
 installed files matched the release payload, and the installed app launched.
 The icon was **hand-tested by Nick** in the installed build and accepted that day:
-"looks great! accepted". The exact portable ZIP still needs its launch/restart
-smoke check before publication. The destructive uninstall lifecycle suite was
-not rerun against Nick's personal installation.
+"looks great! accepted". The exact portable ZIP passed `tools/verify-portable.ps1`
+on 5 October 2026 with an isolated synthetic notebook: launch, disabled startup
+registration, note and font saving, full process restart, restored text and
+Inter at size 28, and clean Quit. Evidence: `artifacts/installed-verification/portable.json`.
+The destructive uninstall lifecycle suite was not rerun against Nick's personal
+installation; September's lifecycle evidence remains historical.
 
 Accepted installed package SHA-256:
 `1b57fa51e3bbf6a0c175c4a53e2b5fecf721274b79f3c35a49edbd4e4fb8a004`.
@@ -58,8 +61,9 @@ animation data are unchanged by this metadata fix.
 
 Final installer upgrade and icon acceptance are recorded above. The automated
 uninstall lifecycle script must not replace Nick's existing personal installation.
-The exact portable ZIP launch/restart smoke check remains pending; the draft
-records the current source commit and artifact hashes.
+The exact portable ZIP launch/restart smoke check passed on 5 October 2026. The
+draft records the current source commit and artifact hashes. The release remains
+unsigned and unpublished; publication and repository visibility are Nick's call.
 
 ## Acceptance status, 22 September 2026
 
