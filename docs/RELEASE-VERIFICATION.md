@@ -19,6 +19,24 @@ The results and hashes below are the historical 22 September acceptance record.
 They do not identify newly built October release artifacts. Final installer and
 ZIP smoke checks must refer to the exact artifacts prepared for the draft release.
 
+### October CI reproducibility fix
+
+The first hosted run failed because the provenance file recorded unsaved solver
+precision that differed between Node 22 and Node 24. Commit
+`a00d33d92db8d794fa6708c4fe433aee9d3c8298` measures final bounds from the encoded
+binary16 positions instead. All three animation files remain byte-for-byte
+unchanged. The exact asset comparisons remain in place; no tests were weakened,
+added or deleted. Independent decoding confirmed the recorded bounds.
+
+The full local locked check and the [hosted build and packaging run](https://github.com/nickzonzh/scrunch/actions/runs/37270145873)
+passed after the fix, including all 86 tests. Nick's hand-tested app code and
+animation data are unchanged by this metadata fix.
+
+Fresh final installer lifecycle and portable smoke checks remain pending. The
+automated lifecycle script must not replace Nick's existing personal installation.
+The October draft must record its own source commit and artifact hashes, and the
+exact final packages must be checked before publication.
+
 ## Acceptance status, 22 September 2026
 
 The trimmed, ReadyToRun, self-contained installer and ZIP pass local x64
