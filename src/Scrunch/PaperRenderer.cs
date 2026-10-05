@@ -166,7 +166,9 @@ internal sealed partial class PaperRenderer : IDisposable
             var tile = _tiles[y * Columns + x];
             // Overlap internal seams only; sampling outside the texture at the
             // silhouette used to leave ragged/transparent strips on the edge.
-            tile.Face.Size = new Vector2(w + (x < Columns - 1 ? 0.5f : 0), h + (y < Rows - 1 ? 0.5f : 0));
+            // Soft borders fade over about a pixel, so a half-pixel overlap let
+            // the drop shadow show through every seam as a faint grid.
+            tile.Face.Size = new Vector2(w + (x < Columns - 1 ? 1 : 0), h + (y < Rows - 1 ? 1 : 0));
             tile.Shade.Size = tile.Face.Size;
             tile.Highlight.Size = tile.Face.Size;
             tile.Brush.Offset = new Vector2(-x * w, -y * h);

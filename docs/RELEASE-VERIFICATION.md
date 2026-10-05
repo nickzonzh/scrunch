@@ -3,7 +3,23 @@
 Tested on 22 September 2026, Windows 10 x64 build 19045, NVIDIA RTX 3060 Ti.
 The repository remains private; no release has been published.
 
-## Acceptance status
+## Native acceptance, 5 October 2026
+
+Commit `41ff38ceba6ec5c05550f9541b9f7584511bcf88` was **hand-tested by Nick**
+on 5 October 2026. Nick confirmed the current native build is good to go as an
+unsigned early preview. This acceptance covers the 2 October 2026 change,
+"Crumple into a rounded wad with an original confined-sheet solver", at that
+commit, together with the preceding note ink, caret and dragging seam fixes.
+
+`tools/check.ps1 -Locked` passed on that commit on 5 October 2026: all 86 tests
+passed, all three prepared bakes matched their generator, and all seven compiled
+shaders matched their source. Code signing remains deferred by Nick's direction.
+
+The results and hashes below are the historical 22 September acceptance record.
+They do not identify newly built October release artifacts. Final installer and
+ZIP smoke checks must refer to the exact artifacts prepared for the draft release.
+
+## Acceptance status, 22 September 2026
 
 The trimmed, ReadyToRun, self-contained installer and ZIP pass local x64
 acceptance. The installer lifecycle, portable restart/font persistence, native

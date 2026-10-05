@@ -41,19 +41,36 @@ corrupted asset all take the same path.
 ## Families and offline authoring
 
 `tools/scrunchfx-assets/author.mjs` generates Corner Crush, Side Scrunch and
-Centre Collapse from an initially flat sheet. Each family has its own seven
-oblique hinge directions, offsets, signed angles and overlapping onset and
-completion times; subsequent hinge axes follow the preceding deformation, and a
-gradual unequal closing pressure compacts the folded sheet. Centre Collapse
-starts with a shallow off-centre depression. Families are selected discretely and
-never blended.
+Centre Collapse from an initially flat sheet with position-based dynamics
+(Müller et al. 2007). Every lattice edge is a length constraint, and every pair
+of triangles sharing an edge is a signed dihedral-angle constraint, using the
+analytic angle gradient of Bridson et al. 2003. Bending past a yield angle moves
+the hinge's rest angle (plastic bending, as in Tallinen et al. 2009 and Narain
+et al. 2013), so creases stay instead of springing back. Small, smooth rest-angle
+flaws let buckles grow gradually rather than snapping.
 
-Direct hinge warps produce stretched spikes, so the authoring path uses an
-irregular, reflection-symmetric panel lattice plus 90 offline edge-length
-projection sweeps per frame, weakly guided toward the authored trajectory. This
-is an artistic approximation: projection is not a perfectly inextensible solve
-and self-intersection is possible. Maximum edge stretch is asserted below 2x rest
-length by `FxTests` rather than claimed to be exact.
+The hand is a confining ellipsoid per vertex, after the shrinking-sphere
+crumpling experiments of Tallinen et al. 2009. Each vertex's ellipsoid starts at
+its rest radius and closes to the wad once a gather wave from the family's start
+point reaches it. Low-frequency bumps keep the outline from reading as a sphere,
+and contact with the hand damps sliding. After the squeeze the hand eases open
+by 15% so the elastic part of each fold springs back into facets, then damping
+rises so the wad settles by the last frame.
+
+Paper has thickness (Bridson, Fedkiw and Anderson 2002). Vertex-triangle and
+edge-edge pairs that are close at the start of a substep keep the side they
+started on, at least the thickness apart, using a spatial hash. This replaced
+the earlier rigid hinge folds, which finished as a spiky wad with flat flaps and
+about 6,600 intersecting triangle pairs; the final wads now have 1-17.
+
+Families differ in where the gather starts and how fast it spreads. Corner
+Crush gathers from one corner, Side Scrunch from one side, and Centre Collapse
+from the centre, which a thumb presses back and holds. Each family seeds its own
+flaws and hand bumps. Families are selected discretely and never blended.
+
+This is an artistic approximation: constraints are solved iteratively, so edges
+stretch a little and a few intersections remain. Maximum edge stretch is
+asserted below 2x rest length by `FxTests` rather than claimed to be exact.
 
 ## Prepared asset format (NFX2)
 
