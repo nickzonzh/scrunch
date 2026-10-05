@@ -1,6 +1,6 @@
 {
   "generator": "Scrunch confined-sheet crumple v3",
-  "generatorSha256": "2bc55775736ae49113c07647acb12f6b581ef54ff70fb9b058bc5b9be64e6e57",
+  "generatorSha256": "7e499f0af05a7064a5b1e44e56e538bd17321fc64ea371b48fd3a399e566c3a8",
   "format": "NFX2",
   "sampleType": "float16",
   "sampleLayout": "per frame, per vertex: position xyz then normal xyz",
@@ -44,9 +44,9 @@
       "bytes": 476340,
       "sha256": "acc4cc134f54e5b0c1941395ca1f42249201a1fe3e5a9eb8f8bf4c6e2ee18387",
       "finalBounds": [
-        0.3385366136631115,
-        0.340592918525881,
-        0.2958447221551789
+        0.3385009765625,
+        0.3406982421875,
+        0.2958984375
       ]
     },
     {
@@ -60,9 +60,9 @@
       "bytes": 476340,
       "sha256": "d8cb95b69b5d7eff575700a91fbe0fcfbfb3a3057e6c51e6f8abe5387dadd915",
       "finalBounds": [
-        0.33984095236349754,
-        0.3620458940281224,
-        0.28029994288315596
+        0.33984375,
+        0.362060546875,
+        0.2802734375
       ]
     },
     {
@@ -81,9 +81,9 @@
       "bytes": 476340,
       "sha256": "11c9dbd44e91ec28058abe27b97b97326d6f109361988440e323babf55060a84",
       "finalBounds": [
-        0.34608063846930176,
-        0.35788350209815917,
-        0.28248555665509856
+        0.3460693359375,
+        0.35791015625,
+        0.282470703125
       ]
     }
   ]

@@ -20,7 +20,9 @@ Reflection symmetry permits exact geometry-field mirroring without mirrored ink.
 Each file is 476,340 bytes. The NFX2 binary layout stores samples as IEEE
 binary16 (position xyz, normal xyz): 61% smaller than the NFX1 float32 layout
 and within 2.5e-4 of it. `scrunch-provenance.json` records generator and
-output hashes, family definitions, settings and final bounds.
+output hashes, family definitions, settings and final bounds measured from the
+encoded binary16 positions. Bounds exclude unsaved solver precision so metadata
+stays reproducible across the Node 22 CI and Node 24 authoring runtimes.
 
 After any authoring change, run the asset checks, then the actual native lab at
 held stages **and production speed**, including mirrored seeds and wide/tall

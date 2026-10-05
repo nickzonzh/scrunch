@@ -40,6 +40,11 @@ function half(value) {
   if(!halfBits) return encodeHalf(rounded);
   halfView[0]=rounded; return halfBits[0];
 }
+function decodeHalf(bits) {
+  const sign=bits&0x8000?-1:1,exponent=(bits>>>10)&31,mantissa=bits&1023;
+  if(exponent===31) return mantissa?NaN:sign*Infinity;
+  return sign*(exponent===0?mantissa*2**-24:(1+mantissa/1024)*2**(exponent-15));
+}
 if(halfBits) for(let i=0;i<4096;i++) { // fail loudly instead of emitting other bytes
   const v=Math.fround(Math.sin(i*.37)*Math.pow(2,(i%44)-22));
   halfView[0]=v;
@@ -253,7 +258,11 @@ for(const [name,family] of Object.entries(families)) {
       const p=positions[i],n=unit(normals[i]),o=(f*count+i)*6;
       for(let k=0;k<3;k++) { data[o+k]=half(p[k]); data[o+3+k]=half(n[k]); }
     }
-    if(f===frames-1) finalBounds=[0,1,2].map(k=>Math.max(...positions.map(p=>p[k]))-Math.min(...positions.map(p=>p[k])));
+    // Describe the shipped samples; unsaved solver precision can vary between JS engines.
+    if(f===frames-1) finalBounds=[0,1,2].map(k=>{
+      const values=Array.from({length:count},(_,i)=>decodeHalf(data[(f*count+i)*6+k]));
+      return Math.max(...values)-Math.min(...values);
+    });
   }
   const header=Buffer.alloc(16);header.write('NFX2');header.writeUInt32LE(count,4);header.writeUInt32LE(frames,8);header.writeUInt32LE(indices.length,12);
   const bytes=Buffer.concat([header,Buffer.from(new Float32Array(uv).buffer),Buffer.from(new Uint32Array(indices).buffer),Buffer.from(data.buffer)]);
